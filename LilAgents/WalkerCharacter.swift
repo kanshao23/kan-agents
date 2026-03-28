@@ -115,6 +115,7 @@ class WalkerCharacter {
         playerLayer.videoGravity = .resizeAspect
         playerLayer.backgroundColor = NSColor.clear.cgColor
         playerLayer.frame = CGRect(x: 0, y: 0, width: displayWidth, height: displayHeight)
+        playerLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
 
         let screen = NSScreen.main!
         let dockTopY = screen.visibleFrame.origin.y
@@ -146,6 +147,7 @@ class WalkerCharacter {
         trackLayer.cornerRadius = 2
         trackLayer.backgroundColor = NSColor.clear.cgColor
         trackLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: displayWidth, height: 4)
+        trackLayer.autoresizingMask = [.layerWidthSizable, .layerMinYMargin]
         hostView.layer?.addSublayer(trackLayer)
         pomodoroTrackLayer = trackLayer
 
@@ -154,6 +156,7 @@ class WalkerCharacter {
         barLayer.cornerRadius = 2
         barLayer.backgroundColor = NSColor.clear.cgColor
         barLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: 0, height: 4)
+        barLayer.autoresizingMask = [.layerMinYMargin]
         hostView.layer?.addSublayer(barLayer)
         pomodoroBarLayer = barLayer
 

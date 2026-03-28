@@ -218,6 +218,26 @@ class WalkerCharacter {
         }
     }
 
+    func handleFileDrop(urls: [URL]) {
+        if !isIdleForPopover { openPopover() }
+        let maxBytes = 10_000
+        var parts: [String] = []
+        for url in urls.prefix(3) {
+            guard let content = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            let body = content.count > maxBytes
+                ? String(content.prefix(maxBytes)) + "\n... (truncated)"
+                : content
+            let ext = url.pathExtension.isEmpty ? "text" : url.pathExtension
+            parts.append("File: \(url.lastPathComponent)\n```\(ext)\n\(body)\n```")
+        }
+        guard !parts.isEmpty else { return }
+        let combined = parts.joined(separator: "\n\n")
+        DispatchQueue.main.async {
+            self.terminalView?.inputField.stringValue = combined
+            self.popoverWindow?.makeFirstResponder(self.terminalView?.inputField)
+        }
+    }
+
     private func openOnboardingPopover() {
         showingCompletion = false
         hideBubble()

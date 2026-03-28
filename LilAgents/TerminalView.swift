@@ -276,6 +276,16 @@ class TerminalView: NSView {
         }
     }
 
+    func updatePlaceholder(for provider: AgentProvider) {
+        let t = theme
+        if let cell = inputField.cell as? PaddedTextFieldCell {
+            cell.placeholderAttributedString = NSAttributedString(
+                string: provider.inputPlaceholder,
+                attributes: [.font: t.font, .foregroundColor: t.textDim]
+            )
+        }
+    }
+
     func clearHistory() {
         textView.textStorage?.setAttributedString(NSAttributedString())
         currentAssistantText = ""

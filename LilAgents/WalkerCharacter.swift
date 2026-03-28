@@ -214,11 +214,12 @@ class WalkerCharacter {
         let nextIdx = ((all.firstIndex(of: activeProvider) ?? 0) + 1) % all.count
         activeProvider = all[nextIdx]  // persists to UserDefaults via setter
 
-        // Update button label
+        // Update button label and placeholder
         if let titleBar = popoverWindow?.contentView?.subviews.first(where: { $0.frame.height == 28 }),
            let btn = titleBar.viewWithTag(999) as? NSButton {
             btn.title = activeProvider.displayName
         }
+        terminalView?.updatePlaceholder(for: activeProvider)
 
         // Reset session for new provider
         session?.terminate()
@@ -547,6 +548,7 @@ class WalkerCharacter {
         terminal.characterColor = characterColor
         terminal.themeOverride = themeOverride
         terminal.autoresizingMask = [.width, .height]
+        terminal.updatePlaceholder(for: activeProvider)
         terminal.onSendMessage = { [weak self] message in
             self?.session?.send(message: message)
         }

@@ -44,6 +44,19 @@ class WalkerCharacter {
     var isPaused = true
     var isGreeting = false
     var isBeingDragged = false
+
+    // Idle shrink
+    static var shrinkWhenIdle: Bool {
+        get { UserDefaults.standard.object(forKey: "dockShrinkWhenIdleEnabled") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "dockShrinkWhenIdleEnabled") }
+    }
+    static var shrinkDelaySeconds: Double {
+        get { UserDefaults.standard.object(forKey: "dockShrinkIdleSeconds") as? Double ?? 20 }
+        set { UserDefaults.standard.set(newValue, forKey: "dockShrinkIdleSeconds") }
+    }
+    private var idleSince: CFTimeInterval = 0
+    private var currentScale: CGFloat = 1.0
+    private static let shrinkTargetScale: CGFloat = 0.56
     private var slideVelocity: NSPoint = .zero
     private var isSliding = false
     private var greetingEndTime: CFTimeInterval = 0
@@ -365,6 +378,7 @@ class WalkerCharacter {
 
     func openPopover() {
         isIdleForPopover = true
+        idleSince = 0
         isWalking = false
         isPaused = true
         queuePlayer.pause()
@@ -449,6 +463,7 @@ class WalkerCharacter {
             showBubble(text: currentPhrase, isCompletion: false)
         }
 
+        idleSince = CACurrentMediaTime()
         let delay = Double.random(in: 2.0...5.0)
         pauseEndTime = CACurrentMediaTime() + delay
     }
@@ -988,12 +1003,23 @@ class WalkerCharacter {
         }
 
         currentTravelDistance = max(dockWidth - displayWidth, 0)
+
+        // Idle shrink animation — lerp scale toward target
+        if WalkerCharacter.shrinkWhenIdle && !isIdleForPopover && !isAgentBusy {
+            let now2 = CACurrentMediaTime()
+            let targetScale: CGFloat = (idleSince > 0 && now2 - idleSince > WalkerCharacter.shrinkDelaySeconds)
+                ? WalkerCharacter.shrinkTargetScale : 1.0
+            currentScale = currentScale + (targetScale - currentScale) * 0.05
+        } else {
+            currentScale = currentScale + (1.0 - currentScale) * 0.1
+        }
+
         if isIdleForPopover {
             let travelDistance = currentTravelDistance
             let x = dockX + travelDistance * positionProgress + currentFlipCompensation
             let bottomPadding = displayHeight * 0.15
             let y = dockTopY - bottomPadding + yOffset
-            window.setFrameOrigin(NSPoint(x: x, y: y))
+            window.setFrame(CGRect(x: x, y: y, width: displayWidth, height: displayHeight), display: false)
             updatePopoverPosition()
             updateThinkingBubble()
             return
@@ -1006,10 +1032,13 @@ class WalkerCharacter {
                 startWalk()
             } else {
                 let travelDistance = max(dockWidth - displayWidth, 0)
-                let x = dockX + travelDistance * positionProgress + currentFlipCompensation
+                let baseX = dockX + travelDistance * positionProgress + currentFlipCompensation
                 let bottomPadding = displayHeight * 0.15
-                let y = dockTopY - bottomPadding + yOffset
-                window.setFrameOrigin(NSPoint(x: x, y: y))
+                let baseY = dockTopY - bottomPadding + yOffset
+                let scaledWidth = displayWidth * currentScale
+                let scaledHeight = displayHeight * currentScale
+                let scaledX = baseX + (displayWidth - scaledWidth) / 2
+                window.setFrame(CGRect(x: scaledX, y: baseY, width: scaledWidth, height: scaledHeight), display: false)
                 return
             }
         }
@@ -1034,10 +1063,13 @@ class WalkerCharacter {
                 return
             }
 
-            let x = dockX + travelDistance * positionProgress + currentFlipCompensation
+            let baseX = dockX + travelDistance * positionProgress + currentFlipCompensation
             let bottomPadding = displayHeight * 0.15
-            let y = dockTopY - bottomPadding + yOffset
-            window.setFrameOrigin(NSPoint(x: x, y: y))
+            let baseY = dockTopY - bottomPadding + yOffset
+            let scaledWidth = displayWidth * currentScale
+            let scaledHeight = displayHeight * currentScale
+            let scaledX = baseX + (displayWidth - scaledWidth) / 2
+            window.setFrame(CGRect(x: scaledX, y: baseY, width: scaledWidth, height: scaledHeight), display: false)
         }
 
         updateThinkingBubble()

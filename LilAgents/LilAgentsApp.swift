@@ -107,6 +107,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         displayItem.submenu = displayMenu
         menu.addItem(displayItem)
 
+        // Shrink submenu
+        let shrinkItem = NSMenuItem(title: "Idle Shrink", action: nil, keyEquivalent: "")
+        let shrinkMenu = NSMenu()
+
+        let shrinkToggle = NSMenuItem(title: "Shrink when idle", action: #selector(toggleIdleShrink(_:)), keyEquivalent: "")
+        shrinkToggle.state = WalkerCharacter.shrinkWhenIdle ? .on : .off
+        shrinkMenu.addItem(shrinkToggle)
+
+        shrinkMenu.addItem(NSMenuItem.separator())
+
+        let delayOptions: [(String, Double)] = [("10 seconds", 10), ("20 seconds", 20), ("30 seconds", 30), ("60 seconds", 60)]
+        for (label, delay) in delayOptions {
+            let item = NSMenuItem(title: label, action: #selector(setShrinkDelay(_:)), keyEquivalent: "")
+            item.representedObject = delay
+            item.state = WalkerCharacter.shrinkDelaySeconds == delay ? .on : .off
+            shrinkMenu.addItem(item)
+        }
+
+        shrinkItem.submenu = shrinkMenu
+        menu.addItem(shrinkItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)), keyEquivalent: "")
@@ -285,6 +306,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func toggleSounds(_ sender: NSMenuItem) {
         WalkerCharacter.soundsEnabled.toggle()
         sender.state = WalkerCharacter.soundsEnabled ? .on : .off
+    }
+
+    @objc func toggleIdleShrink(_ sender: NSMenuItem) {
+        WalkerCharacter.shrinkWhenIdle.toggle()
+        sender.state = WalkerCharacter.shrinkWhenIdle ? .on : .off
+    }
+
+    @objc func setShrinkDelay(_ sender: NSMenuItem) {
+        guard let delay = sender.representedObject as? Double else { return }
+        WalkerCharacter.shrinkDelaySeconds = delay
+        if let menu = sender.menu {
+            for item in menu.items { item.state = .off }
+        }
+        sender.state = .on
     }
 
     @objc func quitApp() {

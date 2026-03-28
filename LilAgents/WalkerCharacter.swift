@@ -214,10 +214,14 @@ class WalkerCharacter {
         let nextIdx = ((all.firstIndex(of: activeProvider) ?? 0) + 1) % all.count
         activeProvider = all[nextIdx]  // persists to UserDefaults via setter
 
-        // Update button label and placeholder
-        if let titleBar = popoverWindow?.contentView?.subviews.first(where: { $0.frame.height == 28 }),
-           let btn = titleBar.viewWithTag(999) as? NSButton {
-            btn.title = activeProvider.displayName
+        // Update title label, provider button, and placeholder
+        if let titleBar = popoverWindow?.contentView?.subviews.first(where: { $0.frame.height == 28 }) {
+            if let btn = titleBar.viewWithTag(999) as? NSButton {
+                btn.title = activeProvider.displayName
+            }
+            if let label = titleBar.viewWithTag(998) as? NSTextField {
+                label.stringValue = activeProvider.titleString(format: resolvedTheme.titleFormat)
+            }
         }
         terminalView?.updatePlaceholder(for: activeProvider)
 
@@ -517,10 +521,11 @@ class WalkerCharacter {
         titleBar.layer?.backgroundColor = t.titleBarBg.cgColor
         container.addSubview(titleBar)
 
-        let titleLabel = NSTextField(labelWithString: t.titleString)
+        let titleLabel = NSTextField(labelWithString: activeProvider.titleString(format: t.titleFormat))
         titleLabel.font = t.titleFont
         titleLabel.textColor = t.titleText
         titleLabel.frame = NSRect(x: 12, y: 6, width: 200, height: 16)
+        titleLabel.tag = 998
         titleBar.addSubview(titleLabel)
 
         let copyBtn = NSButton(title: "⎘", target: self, action: #selector(copyLastResponse))

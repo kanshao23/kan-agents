@@ -141,11 +141,23 @@ class TaskManagerWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate, N
 
         switch id {
         case "time":
-            let tf = NSTextField(labelWithString: task.timeString)
+            let tf = NSTextField(string: task.timeString)
             tf.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+            tf.isEditable = true
+            tf.isBordered = false
+            tf.drawsBackground = false
+            tf.placeholderString = "HH:MM"
+            tf.delegate = self
+            tf.tag = 10000 + row   // time cells: tag >= 10000
             return tf
         case "title":
-            return NSTextField(labelWithString: task.title)
+            let tf = NSTextField(string: task.title)
+            tf.isEditable = true
+            tf.isBordered = false
+            tf.drawsBackground = false
+            tf.delegate = self
+            tf.tag = row            // title cells: tag < 10000
+            return tf
         case "enabled":
             let cb = NSButton(checkboxWithTitle: "", target: self, action: #selector(toggleEnabled(_:)))
             cb.state = task.enabled ? .on : .off
@@ -154,5 +166,39 @@ class TaskManagerWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate, N
         default:
             return nil
         }
+    }
+
+    // MARK: - NSTextFieldDelegate (inline edit save)
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard let tf = obj.object as? NSTextField else { return }
+        let tag = tf.tag
+        let isTime = tag >= 10000
+        let row = isTime ? tag - 10000 : tag
+        let tasks = TaskStore.shared.tasks
+        guard row < tasks.count else { return }
+        var task = tasks[row]
+
+        if isTime {
+            // Parse "HH:MM"
+            let parts = tf.stringValue.split(separator: ":").compactMap { Int($0) }
+            guard parts.count == 2,
+                  (0...23).contains(parts[0]),
+                  (0...59).contains(parts[1]) else {
+                // Revert invalid input
+                tf.stringValue = task.timeString
+                return
+            }
+            task.hour = parts[0]
+            task.minute = parts[1]
+        } else {
+            let trimmed = tf.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                tf.stringValue = task.title
+                return
+            }
+            task.title = trimmed
+        }
+        TaskStore.shared.update(task)
     }
 }

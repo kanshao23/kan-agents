@@ -68,6 +68,7 @@ class WalkerCharacter {
     var clickOutsideMonitor: Any?
     var escapeKeyMonitor: Any?
     var currentStreamingText = ""
+    var lastAssistantResponse = ""
     weak var controller: LilAgentsController?
     var themeOverride: PopoverTheme?
     var isAgentBusy: Bool { session?.isBusy ?? false }
@@ -188,6 +189,12 @@ class WalkerCharacter {
     }
 
     // MARK: - Click Handling & Popover
+
+    @objc func copyLastResponse() {
+        guard !lastAssistantResponse.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(lastAssistantResponse, forType: .string)
+    }
 
     @objc func cycleProvider() {
         let all = AgentProvider.allCases
@@ -500,8 +507,16 @@ class WalkerCharacter {
         titleLabel.frame = NSRect(x: 12, y: 6, width: 200, height: 16)
         titleBar.addSubview(titleLabel)
 
+        let copyBtn = NSButton(title: "⎘", target: self, action: #selector(copyLastResponse))
+        copyBtn.frame = NSRect(x: popoverWidth - 26, y: 5, width: 18, height: 18)
+        copyBtn.bezelStyle = .roundRect
+        copyBtn.font = NSFont.systemFont(ofSize: 10)
+        copyBtn.autoresizingMask = [.minXMargin]
+        copyBtn.toolTip = "Copy last response"
+        titleBar.addSubview(copyBtn)
+
         let providerBtn = NSButton(title: activeProvider.displayName, target: self, action: #selector(cycleProvider))
-        providerBtn.frame = NSRect(x: popoverWidth - 90, y: 5, width: 82, height: 18)
+        providerBtn.frame = NSRect(x: popoverWidth - 114, y: 5, width: 82, height: 18)
         providerBtn.bezelStyle = .roundRect
         providerBtn.font = NSFont.systemFont(ofSize: 10)
         providerBtn.autoresizingMask = [.minXMargin]
@@ -520,6 +535,21 @@ class WalkerCharacter {
         terminal.onSendMessage = { [weak self] message in
             self?.session?.send(message: message)
         }
+        terminal.onCommand = { [weak self] command in
+            guard let self = self else { return }
+            switch command {
+            case "clear":
+                self.session?.terminate()
+                self.session = nil
+                HistoryStore.clear(characterID: self.characterID, provider: self.activeProvider)
+            case "copy":
+                if !self.lastAssistantResponse.isEmpty {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(self.lastAssistantResponse, forType: .string)
+                }
+            default: break
+            }
+        }
         container.addSubview(terminal)
 
         win.contentView = container
@@ -537,6 +567,10 @@ class WalkerCharacter {
         session.onTurnComplete = { [weak self] in
             guard let self = self else { return }
             self.terminalView?.endStreaming()
+            if !self.currentStreamingText.isEmpty {
+                self.lastAssistantResponse = self.currentStreamingText
+                self.currentStreamingText = ""
+            }
             self.playCompletionSound()
             self.showCompletionBubble()
             if !(self.popoverWindow?.isKeyWindow ?? false) {

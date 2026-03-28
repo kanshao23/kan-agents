@@ -52,6 +52,7 @@ class TerminalView: NSView {
     let textView = NSTextView()
     let inputField = NSTextField()
     var onSendMessage: ((String) -> Void)?
+    var onCommand: ((String) -> Void)?
 
     private var currentAssistantText = ""
     private var isStreaming = false
@@ -198,10 +199,32 @@ class TerminalView: NSView {
         guard !text.isEmpty else { return }
         inputField.stringValue = ""
 
+        if text.hasPrefix("/") {
+            handleSlashCommand(text)
+            return
+        }
+
         appendUser(text)
         isStreaming = true
         currentAssistantText = ""
         onSendMessage?(text)
+    }
+
+    private func handleSlashCommand(_ cmd: String) {
+        let lower = cmd.lowercased()
+        if lower == "/clear" {
+            clearHistory()
+            onCommand?("clear")
+        } else if lower == "/copy" {
+            onCommand?("copy")
+        } else if lower == "/help" {
+            let help = "Commands: /clear · /copy · /help"
+            appendStreamingText(help + "\n")
+            endStreaming()
+        } else {
+            let msg = "Unknown command: \(cmd). Type /help for commands."
+            appendError(msg)
+        }
     }
 
     // MARK: - Append Methods

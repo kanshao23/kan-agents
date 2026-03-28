@@ -73,6 +73,8 @@ class WalkerCharacter {
     // Pomodoro bar
     private var pomodoroTrackLayer: CALayer?
     private var pomodoroBarLayer: CALayer?
+    private var pomodoroTimeLayer: CATextLayer?
+    private static let pomodoroBarH: CGFloat = 14
 
     // Onboarding
     var isOnboarding = false
@@ -142,23 +144,39 @@ class WalkerCharacter {
         hostView.layer?.backgroundColor = NSColor.clear.cgColor
         hostView.layer?.addSublayer(playerLayer)
 
+        let bH = Self.pomodoroBarH
+        let bY = displayHeight - bH
+
         // Gray track (full width, hidden until timer starts)
         let trackLayer = CALayer()
-        trackLayer.cornerRadius = 2
+        trackLayer.cornerRadius = 3
         trackLayer.backgroundColor = NSColor.clear.cgColor
-        trackLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: displayWidth, height: 4)
+        trackLayer.frame = CGRect(x: 0, y: bY, width: displayWidth, height: bH)
         trackLayer.autoresizingMask = [.layerWidthSizable, .layerMinYMargin]
         hostView.layer?.addSublayer(trackLayer)
         pomodoroTrackLayer = trackLayer
 
         // Colored fill (grows from left as time elapses)
         let barLayer = CALayer()
-        barLayer.cornerRadius = 2
+        barLayer.cornerRadius = 3
         barLayer.backgroundColor = NSColor.clear.cgColor
-        barLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: 0, height: 4)
+        barLayer.frame = CGRect(x: 0, y: bY, width: 0, height: bH)
         barLayer.autoresizingMask = [.layerMinYMargin]
         hostView.layer?.addSublayer(barLayer)
         pomodoroBarLayer = barLayer
+
+        // Time text overlay (e.g. "23:45")
+        let timeLayer = CATextLayer()
+        timeLayer.fontSize = 9
+        timeLayer.alignmentMode = .center
+        timeLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 2.0
+        timeLayer.foregroundColor = NSColor.white.withAlphaComponent(0.9).cgColor
+        timeLayer.backgroundColor = NSColor.clear.cgColor
+        timeLayer.frame = CGRect(x: 0, y: bY, width: displayWidth, height: bH)
+        timeLayer.autoresizingMask = [.layerWidthSizable, .layerMinYMargin]
+        timeLayer.isHidden = true
+        hostView.layer?.addSublayer(timeLayer)
+        pomodoroTimeLayer = timeLayer
 
         window.contentView = hostView
         window.orderFrontRegardless()
@@ -1123,14 +1141,16 @@ class WalkerCharacter {
     func updatePomodoroBar() {
         guard let barLayer = pomodoroBarLayer, let trackLayer = pomodoroTrackLayer else { return }
         let pt = PomodoroTimer.shared
-        let barY = displayHeight - 4
+        let bH = Self.pomodoroBarH
+        let barY = displayHeight - bH
 
         guard pt.phase != .idle else {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             trackLayer.backgroundColor = NSColor.clear.cgColor
             barLayer.backgroundColor = NSColor.clear.cgColor
-            barLayer.frame = CGRect(x: 0, y: barY, width: 0, height: 4)
+            barLayer.frame = CGRect(x: 0, y: barY, width: 0, height: bH)
+            pomodoroTimeLayer?.isHidden = true
             CATransaction.commit()
             return
         }
@@ -1143,7 +1163,6 @@ class WalkerCharacter {
         case .idle:       totalSeconds = 1
         }
 
-        // Elapsed fraction: starts at 0, grows to 1
         let elapsed = CGFloat(totalSeconds - pt.secondsRemaining)
         let progress = min(1, max(0, elapsed / CGFloat(max(totalSeconds, 1))))
         let barW = displayWidth * progress
@@ -1154,15 +1173,21 @@ class WalkerCharacter {
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        trackLayer.frame = CGRect(x: 0, y: barY, width: displayWidth, height: 4)
-        trackLayer.backgroundColor = NSColor(white: 0.5, alpha: 0.35).cgColor
-        trackLayer.cornerRadius = 2
+        trackLayer.frame = CGRect(x: 0, y: barY, width: displayWidth, height: bH)
+        trackLayer.backgroundColor = NSColor(white: 0.15, alpha: 0.55).cgColor
+        trackLayer.cornerRadius = 3
+        // Update time label (no animation — update every second)
+        if let tl = pomodoroTimeLayer {
+            tl.isHidden = false
+            tl.frame = CGRect(x: 0, y: barY, width: displayWidth, height: bH)
+            tl.string = pt.timeString
+        }
         CATransaction.commit()
 
         CATransaction.begin()
         CATransaction.setAnimationDuration(0.8)
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .linear))
-        barLayer.frame = CGRect(x: 0, y: barY, width: barW, height: 4)
+        barLayer.frame = CGRect(x: 0, y: barY, width: barW, height: bH)
         barLayer.backgroundColor = fillColor.cgColor
         CATransaction.commit()
     }

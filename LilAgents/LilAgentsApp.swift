@@ -43,13 +43,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 ?? self?.controller?.characters.first
             switch phase {
             case .working:
-                character?.showBubble(text: "休息一下！☕", isCompletion: true)
+                character?.showBubble(text: "休息一下！☕", isCompletion: true, action: {
+                    PomodoroTimer.shared.start()
+                    PomodoroWindow.shared?.updateUI()
+                })
                 character?.playCompletionSound()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { character?.thinkingBubbleWindow?.orderOut(nil) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) { character?.thinkingBubbleWindow?.orderOut(nil) }
             case .shortBreak, .longBreak:
-                character?.showBubble(text: "回来工作啦！💻", isCompletion: false)
+                character?.showBubble(text: "回来工作啦！💻 点我开始", isCompletion: false, action: {
+                    PomodoroTimer.shared.start()
+                    PomodoroWindow.shared?.updateUI()
+                })
                 character?.playCompletionSound()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { character?.thinkingBubbleWindow?.orderOut(nil) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) { character?.thinkingBubbleWindow?.orderOut(nil) }
             case .idle:
                 break
             }

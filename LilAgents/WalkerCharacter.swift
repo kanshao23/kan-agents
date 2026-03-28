@@ -754,7 +754,7 @@ class WalkerCharacter {
         })
     }
 
-    func showBubble(text: String, isCompletion: Bool) {
+    func showBubble(text: String, isCompletion: Bool, action: (() -> Void)? = nil) {
         let t = resolvedTheme
         if thinkingBubbleWindow == nil {
             createThinkingBubble()
@@ -787,6 +787,19 @@ class WalkerCharacter {
                 label.stringValue = text
                 label.textColor = textColor
             }
+        }
+
+        // Wire up tap action
+        if let container = thinkingBubbleWindow?.contentView as? ClickableBubbleView {
+            container.onTap = action.map { act in { [weak self] in
+                self?.thinkingBubbleWindow?.ignoresMouseEvents = true
+                container.onTap = nil
+                act()
+            }}
+            thinkingBubbleWindow?.ignoresMouseEvents = (action == nil)
+            container.setNeedsUpdateTrackingAreas()
+            // Show subtle tap hint border when clickable
+            container.layer?.borderWidth = action != nil ? 1.8 : 1
         }
 
         if !(thinkingBubbleWindow?.isVisible ?? false) {
@@ -833,7 +846,7 @@ class WalkerCharacter {
         win.ignoresMouseEvents = true
         win.collectionBehavior = [.moveToActiveSpace, .stationary]
 
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: w, height: h))
+        let container = ClickableBubbleView(frame: NSRect(x: 0, y: 0, width: w, height: h))
         container.wantsLayer = true
         container.layer?.backgroundColor = t.bubbleBg.cgColor
         container.layer?.cornerRadius = t.bubbleCornerRadius
@@ -1405,6 +1418,79 @@ class WalkerCharacter {
         habitCheckWindow?.close()
         habitCheckWindow = nil
         pendingHabitID = nil
+    }
+
+    // MARK: - Context Menu Actions
+
+    @objc func menuTogglePomodoro() {
+        let pt = PomodoroTimer.shared
+        pt.isRunning ? pt.pause() : pt.start()
+        PomodoroWindow.shared?.updateUI()
+    }
+
+    @objc func menuSkipPomodoro() {
+        PomodoroTimer.shared.skip()
+        PomodoroWindow.shared?.updateUI()
+    }
+
+    @objc func menuResetPomodoro() {
+        PomodoroTimer.shared.reset()
+        PomodoroWindow.shared?.updateUI()
+    }
+
+    @objc func menuCheckInHabit(_ sender: NSMenuItem) {
+        let idx = sender.tag
+        let justCompleted = HabitStore.shared.toggleToday(at: idx)
+        if justCompleted {
+            let habits = HabitStore.shared.habits
+            let emoji = idx < habits.count ? habits[idx].emoji : "✅"
+            showBubble(text: "\(emoji) 打卡成功！🎉", isCompletion: true)
+            playCompletionSound()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                self?.thinkingBubbleWindow?.orderOut(nil)
+            }
+            HabitWindow.shared?.reload()
+        }
+    }
+
+    @objc func menuOpenChat() {
+        handleClick()
+    }
+}
+
+// MARK: - Clickable bubble view
+
+private class ClickableBubbleView: NSView {
+    var onTap: (() -> Void)?
+    private var trackingArea: NSTrackingArea?
+
+    func setNeedsUpdateTrackingAreas() {
+        updateTrackingAreas()
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let t = trackingArea { removeTrackingArea(t); trackingArea = nil }
+        guard onTap != nil else { return }
+        let opts: NSTrackingArea.Options = [.mouseEnteredAndExited, .activeAlways]
+        let t = NSTrackingArea(rect: bounds, options: opts, owner: self, userInfo: nil)
+        trackingArea = t
+        addTrackingArea(t)
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        guard onTap != nil else { return }
+        NSCursor.pointingHand.push()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        NSCursor.pop()
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard let action = onTap else { return }
+        NSCursor.pop()
+        action()
     }
 }
 

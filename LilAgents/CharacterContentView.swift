@@ -138,4 +138,47 @@ class CharacterContentView: NSView {
             }
         }
     }
+
+    override func rightMouseUp(with event: NSEvent) {
+        guard let char = character else { return }
+        let menu = NSMenu()
+        let pt = PomodoroTimer.shared
+
+        // Pomodoro
+        let pomTitle: String
+        if pt.phase == .idle { pomTitle = "🍅 开始番茄钟" }
+        else if pt.isRunning { pomTitle = "⏸ 暂停番茄钟" }
+        else { pomTitle = "▶ 继续番茄钟" }
+        menu.addItem(menuItem(pomTitle, action: #selector(WalkerCharacter.menuTogglePomodoro), target: char))
+        if pt.phase != .idle {
+            menu.addItem(menuItem("⏭ 跳过此阶段", action: #selector(WalkerCharacter.menuSkipPomodoro), target: char))
+            menu.addItem(menuItem("↺ 重置番茄钟", action: #selector(WalkerCharacter.menuResetPomodoro), target: char))
+        }
+
+        // Habits — show undone ones for quick check-in
+        let undone = HabitStore.shared.habits.enumerated().filter { !$0.element.isDoneToday }
+        if !undone.isEmpty {
+            menu.addItem(.separator())
+            let header = NSMenuItem(title: "今日习惯", action: nil, keyEquivalent: "")
+            header.isEnabled = false
+            menu.addItem(header)
+            for (idx, habit) in undone {
+                let item = menuItem("\(habit.emoji) \(habit.name)",
+                                    action: #selector(WalkerCharacter.menuCheckInHabit(_:)), target: char)
+                item.tag = idx
+                menu.addItem(item)
+            }
+        }
+
+        menu.addItem(.separator())
+        menu.addItem(menuItem("💬 打开聊天", action: #selector(WalkerCharacter.menuOpenChat), target: char))
+
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    private func menuItem(_ title: String, action: Selector, target: AnyObject) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = target
+        return item
+    }
 }

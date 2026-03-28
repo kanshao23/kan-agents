@@ -72,8 +72,8 @@ enum TitleFormat {
 
 // MARK: - Message
 
-struct AgentMessage {
-    enum Role { case user, assistant, error, toolUse, toolResult }
+struct AgentMessage: Codable {
+    enum Role: String, Codable { case user, assistant, error, toolUse, toolResult }
     let role: Role
     let text: String
 }
@@ -83,7 +83,7 @@ struct AgentMessage {
 protocol AgentSession: AnyObject {
     var isRunning: Bool { get }
     var isBusy: Bool { get }
-    var history: [AgentMessage] { get }
+    var history: [AgentMessage] { get set }
 
     var onText: ((String) -> Void)? { get set }
     var onError: ((String) -> Void)? { get set }

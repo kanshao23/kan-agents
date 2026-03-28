@@ -196,6 +196,7 @@ class WalkerCharacter {
         // Reset session for new provider
         session?.terminate()
         session = nil
+        HistoryStore.clear(characterID: characterID, provider: activeProvider)
         terminalView?.clearHistory()
 
         let newSession = activeProvider.createSession()
@@ -288,6 +289,10 @@ class WalkerCharacter {
             session = newSession
             wireSession(newSession, providerName: activeProvider.displayName)
             newSession.start()
+            let saved = HistoryStore.load(characterID: characterID, provider: activeProvider)
+            if !saved.isEmpty {
+                newSession.history = saved
+            }
         }
 
         if popoverWindow == nil {
@@ -449,6 +454,9 @@ class WalkerCharacter {
             self?.terminalView?.endStreaming()
             self?.playCompletionSound()
             self?.showCompletionBubble()
+            if let self = self, !self.characterID.isEmpty {
+                HistoryStore.save(session.history, characterID: self.characterID, provider: self.activeProvider)
+            }
         }
 
         session.onError = { [weak self] text in

@@ -25,7 +25,7 @@ private class HabitHeatmapView: NSView {
 
 // MARK: - HabitWindow
 
-class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
+class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate, NSTextFieldDelegate {
     static var shared: HabitWindow?
 
     var onHabitCompleted: (() -> Void)?
@@ -35,15 +35,18 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
     private let nameField = NSTextField()
     private let timePicker = NSDatePicker()
     private let timeToggle = NSButton(checkboxWithTitle: "提醒时间", target: nil, action: nil)
+    private let actionBtn = NSButton()  // "添加" or "更新"
+    private var editingRow: Int? = nil  // row being edited via bottom form
 
     init() {
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 420, height: 500),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false
         )
         title = "Habit Tracker"
         isReleasedWhenClosed = false
+        minSize = NSSize(width: 380, height: 380)
         center()
         setupUI()
         reload()
@@ -79,6 +82,8 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
         tableView.selectionHighlightStyle = .none
         tableView.backgroundColor = .clear
         tableView.allowsMultipleSelection = false
+        tableView.target = self
+        tableView.action = #selector(tableClicked)
 
         let scroll = NSScrollView()
         scroll.documentView = tableView
@@ -89,29 +94,32 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
         scroll.autoresizingMask = [.width, .height]
         content.addSubview(scroll)
 
-        // Separator
         let sep = NSBox(); sep.boxType = .separator
         sep.frame = NSRect(x: 12, y: 116, width: W - 24, height: 1)
         content.addSubview(sep)
 
-        // Section label
+        // Form section
         let newLabel = NSTextField(labelWithString: "添加新习惯")
         newLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
         newLabel.textColor = .secondaryLabelColor
         newLabel.frame = NSRect(x: 14, y: 96, width: 200, height: 16)
+        newLabel.tag = 999  // used to update "添加新习惯" / "编辑习惯"
         content.addSubview(newLabel)
 
-        // Input row
         emojiField.frame = NSRect(x: 14, y: 64, width: 36, height: 26)
         emojiField.placeholderString = "😀"
         emojiField.alignment = .center
         emojiField.font = NSFont.systemFont(ofSize: 16)
+        emojiField.delegate = self
+        emojiField.tag = -1  // -1 = new habit form
         content.addSubview(emojiField)
 
         nameField.frame = NSRect(x: 56, y: 64, width: 152, height: 26)
         nameField.placeholderString = "习惯名称"
+        nameField.delegate = self
+        nameField.tag = -1
         nameField.target = self
-        nameField.action = #selector(addHabit)
+        nameField.action = #selector(formAction)
         content.addSubview(nameField)
 
         timeToggle.target = self
@@ -126,14 +134,22 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
         timePicker.isEnabled = false
         content.addSubview(timePicker)
 
-        let addBtn = NSButton(title: "添加", target: self, action: #selector(addHabit))
-        addBtn.bezelStyle = .rounded
-        addBtn.frame = NSRect(x: 14, y: 24, width: 70, height: 28)
-        content.addSubview(addBtn)
+        actionBtn.bezelStyle = .rounded
+        actionBtn.frame = NSRect(x: 14, y: 24, width: 70, height: 28)
+        actionBtn.title = "添加"
+        actionBtn.target = self
+        actionBtn.action = #selector(formAction)
+        content.addSubview(actionBtn)
+
+        let cancelBtn = NSButton(title: "取消", target: self, action: #selector(cancelEdit))
+        cancelBtn.bezelStyle = .rounded
+        cancelBtn.frame = NSRect(x: 92, y: 24, width: 60, height: 28)
+        cancelBtn.tag = 800
+        content.addSubview(cancelBtn)
 
         let removeBtn = NSButton(title: "删除选中", target: self, action: #selector(removeHabit))
         removeBtn.bezelStyle = .rounded
-        removeBtn.frame = NSRect(x: 92, y: 24, width: 90, height: 28)
+        removeBtn.frame = NSRect(x: 162, y: 24, width: 90, height: 28)
         content.addSubview(removeBtn)
 
         contentView = content
@@ -143,9 +159,64 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
         timePicker.isEnabled = timeToggle.state == .on
     }
 
-    func reload() { tableView.reloadData() }
+    // MARK: - Table click to populate form
 
-    @objc private func addHabit() {
+    @objc private func tableClicked() {
+        let row = tableView.clickedRow
+        guard row >= 0 else { return }
+        let habits = HabitStore.shared.habits
+        guard row < habits.count else { return }
+        populateForm(with: habits[row], at: row)
+    }
+
+    private func populateForm(with habit: Habit, at row: Int) {
+        editingRow = row
+        emojiField.stringValue = habit.emoji
+        nameField.stringValue = habit.name
+
+        if let rh = habit.reminderHour, let rm = habit.reminderMinute {
+            timeToggle.state = .on
+            timePicker.isEnabled = true
+            var comps = Calendar.current.dateComponents([.hour, .minute], from: Date())
+            comps.hour = rh; comps.minute = rm
+            if let d = Calendar.current.date(from: comps) { timePicker.dateValue = d }
+        } else {
+            timeToggle.state = .off
+            timePicker.isEnabled = false
+        }
+
+        actionBtn.title = "更新"
+        if let label = contentView?.viewWithTag(999) as? NSTextField {
+            label.stringValue = "编辑习惯"
+        }
+    }
+
+    @objc private func cancelEdit() {
+        clearForm()
+    }
+
+    private func clearForm() {
+        editingRow = nil
+        emojiField.stringValue = ""
+        nameField.stringValue = ""
+        timeToggle.state = .off
+        timePicker.isEnabled = false
+        actionBtn.title = "添加"
+        if let label = contentView?.viewWithTag(999) as? NSTextField {
+            label.stringValue = "添加新习惯"
+        }
+        tableView.deselectAll(nil)
+    }
+
+    @objc private func formAction() {
+        if let row = editingRow {
+            updateHabit(at: row)
+        } else {
+            addHabit()
+        }
+    }
+
+    private func addHabit() {
         let name = nameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         let emoji = emojiField.stringValue.isEmpty ? "✅" : emojiField.stringValue
@@ -156,10 +227,27 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
             h.reminderMinute = cal.component(.minute, from: timePicker.dateValue)
         }
         HabitStore.shared.add(h)
-        nameField.stringValue = ""
-        emojiField.stringValue = ""
-        timeToggle.state = .off
-        timePicker.isEnabled = false
+        clearForm()
+        reload()
+    }
+
+    private func updateHabit(at row: Int) {
+        let name = nameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        var habits = HabitStore.shared.habits
+        guard row < habits.count else { return }
+        habits[row].name = name
+        habits[row].emoji = emojiField.stringValue.isEmpty ? habits[row].emoji : emojiField.stringValue
+        if timeToggle.state == .on {
+            let cal = Calendar.current
+            habits[row].reminderHour = cal.component(.hour, from: timePicker.dateValue)
+            habits[row].reminderMinute = cal.component(.minute, from: timePicker.dateValue)
+        } else {
+            habits[row].reminderHour = nil
+            habits[row].reminderMinute = nil
+        }
+        HabitStore.shared.habits = habits
+        clearForm()
         reload()
     }
 
@@ -167,6 +255,7 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
         let row = tableView.selectedRow
         guard row >= 0 else { return }
         HabitStore.shared.remove(at: row)
+        clearForm()
         reload()
     }
 
@@ -176,6 +265,8 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
         reload()
         if justCompleted { onHabitCompleted?() }
     }
+
+    func reload() { tableView.reloadData() }
 
     // MARK: - DataSource
 
@@ -189,18 +280,18 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
         let habit = HabitStore.shared.habits[row]
         let W: CGFloat = tableColumn?.width ?? 396
         let H: CGFloat = 66
+        let isEditing = editingRow == row
 
         let card = NSView(frame: NSRect(x: 0, y: 2, width: W, height: H))
         card.wantsLayer = true
         let isDone = habit.isDoneToday
-        card.layer?.backgroundColor = isDone
-            ? NSColor.systemGreen.withAlphaComponent(0.07).cgColor
-            : NSColor(white: 0.5, alpha: 0.04).cgColor
+        let bgAlpha: CGFloat = isEditing ? 0.12 : (isDone ? 0.07 : 0.04)
+        let borderAlpha: CGFloat = isEditing ? 0.5 : (isDone ? 0.22 : 0.1)
+        let tint: NSColor = isEditing ? .systemBlue : (isDone ? .systemGreen : .gray)
+        card.layer?.backgroundColor = tint.withAlphaComponent(bgAlpha).cgColor
         card.layer?.cornerRadius = 10
-        card.layer?.borderWidth = 1
-        card.layer?.borderColor = isDone
-            ? NSColor.systemGreen.withAlphaComponent(0.22).cgColor
-            : NSColor(white: 0.5, alpha: 0.1).cgColor
+        card.layer?.borderWidth = isEditing ? 1.5 : 1
+        card.layer?.borderColor = tint.withAlphaComponent(borderAlpha).cgColor
 
         // Emoji
         let emojiLabel = NSTextField(labelWithString: habit.emoji)
@@ -225,7 +316,7 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
         streakLabel.frame = NSRect(x: 52, y: H - 42, width: 130, height: 14)
         card.addSubview(streakLabel)
 
-        // Optional reminder time tag
+        // Optional reminder time
         if let rh = habit.reminderHour, let rm = habit.reminderMinute {
             let timeLabel = NSTextField(labelWithString: String(format: "⏰ %02d:%02d", rh, rm))
             timeLabel.font = NSFont.systemFont(ofSize: 10)
@@ -265,6 +356,16 @@ class HabitWindow: NSWindow, NSTableViewDataSource, NSTableViewDelegate {
         }
         doneBtn.frame = NSRect(x: W - 72, y: H / 2 - 13, width: 62, height: 26)
         card.addSubview(doneBtn)
+
+        // "Click to edit" hint when selected
+        if isEditing {
+            let hint = NSTextField(labelWithString: "↓ 在下方编辑")
+            hint.font = NSFont.systemFont(ofSize: 9)
+            hint.textColor = .systemBlue
+            hint.frame = NSRect(x: W - 72, y: H / 2 + 16, width: 62, height: 12)
+            hint.alignment = .center
+            card.addSubview(hint)
+        }
 
         return card
     }

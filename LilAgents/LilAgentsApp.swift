@@ -28,6 +28,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 ?? self?.controller?.characters.first
             character?.showReminder(task: task)
         }
+        PomodoroTimer.shared.onPhaseComplete = { [weak self] phase in
+            let character = self?.controller?.characters.first(where: { $0.isManuallyVisible })
+                ?? self?.controller?.characters.first
+            switch phase {
+            case .working:
+                character?.showBubble(text: "休息一下！☕", isCompletion: true)
+                character?.playCompletionSound()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { character?.thinkingBubbleWindow?.orderOut(nil) }
+            case .shortBreak, .longBreak:
+                character?.showBubble(text: "回来工作啦！💻", isCompletion: false)
+                character?.playCompletionSound()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { character?.thinkingBubbleWindow?.orderOut(nil) }
+            case .idle:
+                break
+            }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -138,6 +154,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let remindersItem = NSMenuItem(title: "Daily Reminders…", action: #selector(openReminders), keyEquivalent: "")
         menu.addItem(remindersItem)
+
+        let pomodoroItem = NSMenuItem(title: "Pomodoro Timer", action: #selector(togglePomodoro), keyEquivalent: "")
+        menu.addItem(pomodoroItem)
+
+        let habitsItem = NSMenuItem(title: "Habit Tracker", action: #selector(openHabits), keyEquivalent: "")
+        menu.addItem(habitsItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -335,6 +357,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func openReminders() {
         TaskManagerWindow.show()
+    }
+
+    @objc func togglePomodoro() {
+        PomodoroWindow.toggle()
+    }
+
+    @objc func openHabits() {
+        let win = HabitWindow.shared ?? HabitWindow()
+        HabitWindow.shared = win
+        win.onHabitCompleted = { [weak self] in
+            let character = self?.controller?.characters.first(where: { $0.isManuallyVisible })
+                ?? self?.controller?.characters.first
+            character?.showBubble(text: "习惯打卡！🎉", isCompletion: true)
+            character?.playCompletionSound()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                character?.thinkingBubbleWindow?.orderOut(nil)
+            }
+        }
+        win.reload()
+        win.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc func quitApp() {

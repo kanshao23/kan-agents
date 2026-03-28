@@ -1092,49 +1092,102 @@ class WalkerCharacter {
         pendingReminderTask = task
 
         let t = resolvedTheme
+        let accent = characterColor
+        let W: CGFloat = 280
+        let H: CGFloat = 160
+
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: 110),
-            styleMask: [.titled, .closable],
+            contentRect: NSRect(x: 0, y: 0, width: W, height: H),
+            styleMask: .borderless,
             backing: .buffered,
             defer: false
         )
-        win.title = "Reminder"
+        win.isOpaque = false
+        win.backgroundColor = .clear
+        win.hasShadow = true
         win.isReleasedWhenClosed = false
         win.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 20)
+        win.collectionBehavior = [.moveToActiveSpace, .stationary]
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 110))
-        content.wantsLayer = true
-        content.layer?.backgroundColor = t.popoverBg.cgColor
+        // Card container
+        let card = NSView(frame: NSRect(x: 0, y: 0, width: W, height: H))
+        card.wantsLayer = true
+        card.layer?.backgroundColor = t.popoverBg.cgColor
+        card.layer?.cornerRadius = 22
+        card.layer?.masksToBounds = true
+        card.layer?.borderWidth = 2.5
+        card.layer?.borderColor = accent.withAlphaComponent(0.55).cgColor
 
+        // Coloured header strip
+        let header = NSView(frame: NSRect(x: 0, y: H - 44, width: W, height: 44))
+        header.wantsLayer = true
+        header.layer?.backgroundColor = accent.withAlphaComponent(0.18).cgColor
+        card.addSubview(header)
+
+        // Bell emoji
+        let bell = NSTextField(labelWithString: "🔔")
+        bell.font = NSFont.systemFont(ofSize: 22)
+        bell.frame = NSRect(x: 12, y: H - 38, width: 36, height: 32)
+        card.addSubview(bell)
+
+        // Time label in header
+        let timeLabel = NSTextField(labelWithString: task.timeString)
+        timeLabel.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)
+        timeLabel.textColor = accent
+        timeLabel.frame = NSRect(x: 50, y: H - 34, width: W - 62, height: 22)
+        card.addSubview(timeLabel)
+
+        // Task title
         let label = NSTextField(wrappingLabelWithString: task.title)
-        label.frame = NSRect(x: 16, y: 56, width: 268, height: 40)
         label.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
         label.textColor = t.textPrimary
         label.alignment = .center
-        content.addSubview(label)
+        label.frame = NSRect(x: 12, y: 52, width: W - 24, height: 52)
+        card.addSubview(label)
 
-        let timeLabel = NSTextField(labelWithString: "🔔 " + task.timeString)
-        timeLabel.frame = NSRect(x: 16, y: 36, width: 268, height: 18)
-        timeLabel.font = NSFont.systemFont(ofSize: 11)
-        timeLabel.textColor = t.textDim
-        timeLabel.alignment = .center
-        content.addSubview(timeLabel)
+        // Helper to make pill buttons
+        func makePillButton(title: String, filled: Bool) -> NSButton {
+            let btn = NSButton(title: title, target: nil, action: nil)
+            btn.bezelStyle = .rounded
+            btn.isBordered = false
+            btn.wantsLayer = true
+            btn.layer?.cornerRadius = 13
+            if filled {
+                btn.layer?.backgroundColor = accent.cgColor
+                btn.attributedTitle = NSAttributedString(string: title, attributes: [
+                    .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
+                    .foregroundColor: NSColor.white
+                ])
+            } else {
+                btn.layer?.backgroundColor = accent.withAlphaComponent(0.12).cgColor
+                btn.layer?.borderWidth = 1.2
+                btn.layer?.borderColor = accent.withAlphaComponent(0.4).cgColor
+                btn.attributedTitle = NSAttributedString(string: title, attributes: [
+                    .font: NSFont.systemFont(ofSize: 12, weight: .medium),
+                    .foregroundColor: accent
+                ])
+            }
+            return btn
+        }
 
-        let dismissBtn = NSButton(title: "Got it", target: self, action: #selector(dismissReminder))
-        dismissBtn.bezelStyle = .rounded
-        dismissBtn.frame = NSRect(x: 16, y: 8, width: 120, height: 24)
+        let dismissBtn = makePillButton(title: "✓  Got it", filled: true)
+        dismissBtn.frame = NSRect(x: 12, y: 12, width: 118, height: 30)
+        dismissBtn.target = self
+        dismissBtn.action = #selector(dismissReminder)
 
-        let snoozeBtn = NSButton(title: "Remind in 10 min", target: self, action: #selector(snoozeReminder))
-        snoozeBtn.bezelStyle = .rounded
-        snoozeBtn.frame = NSRect(x: 144, y: 8, width: 140, height: 24)
+        let snoozeBtn = makePillButton(title: "⏰  10 min", filled: false)
+        snoozeBtn.frame = NSRect(x: 138, y: 12, width: 130, height: 30)
+        snoozeBtn.target = self
+        snoozeBtn.action = #selector(snoozeReminder)
 
-        content.addSubview(dismissBtn)
-        content.addSubview(snoozeBtn)
-        win.contentView = content
+        card.addSubview(dismissBtn)
+        card.addSubview(snoozeBtn)
+        win.contentView = card
 
+        // Position above character with a small gap
         let charMid = window.frame.midX
         let charTop = window.frame.maxY
-        win.setFrameOrigin(NSPoint(x: charMid - 150, y: charTop + 10))
+        win.setFrameOrigin(NSPoint(x: charMid - W / 2, y: charTop + 8))
 
         reminderWindow = win
         win.makeKeyAndOrderFront(nil)

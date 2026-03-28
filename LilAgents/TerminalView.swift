@@ -75,6 +75,13 @@ class TerminalView: NSView {
         return t
     }
 
+    private let quickPrompts: [(label: String, prefix: String)] = [
+        ("解释", "请解释以下内容：\n"),
+        ("写测试", "请为以下代码写测试：\n"),
+        ("修 Bug", "帮我找出并修复问题：\n"),
+        ("总结", "请总结以下内容：\n")
+    ]
+
     // MARK: - Setup
 
     private func setupViews() {
@@ -83,9 +90,9 @@ class TerminalView: NSView {
         let padding: CGFloat = 10
 
         scrollView.frame = NSRect(
-            x: padding, y: inputHeight + padding + 6,
+            x: padding, y: inputHeight + padding + 6 + 30,
             width: frame.width - padding * 2,
-            height: frame.height - inputHeight - padding - 10
+            height: frame.height - inputHeight - padding - 10 - 30
         )
         scrollView.autoresizingMask = [.width, .height]
         scrollView.hasVerticalScroller = true
@@ -142,6 +149,46 @@ class TerminalView: NSView {
         inputField.target = self
         inputField.action = #selector(inputSubmitted)
         addSubview(inputField)
+
+        let barY = inputField.frame.maxY + 2
+        let bar = NSView(frame: NSRect(x: 0, y: barY, width: frame.width, height: 26))
+        bar.wantsLayer = true
+        bar.layer?.backgroundColor = t.titleBarBg.withAlphaComponent(0.6).cgColor
+        bar.autoresizingMask = [.width]
+
+        let btnW: CGFloat = 56
+        let spacing: CGFloat = 5
+        let totalW = CGFloat(quickPrompts.count) * btnW + CGFloat(quickPrompts.count - 1) * spacing
+        var bx = (frame.width - totalW) / 2
+
+        for (i, prompt) in quickPrompts.enumerated() {
+            let btn = NSButton(title: prompt.label, target: self, action: #selector(quickPromptTapped(_:)))
+            btn.frame = NSRect(x: bx, y: 3, width: btnW, height: 20)
+            btn.bezelStyle = .roundRect
+            btn.font = NSFont.systemFont(ofSize: 10)
+            btn.tag = i
+            bar.addSubview(btn)
+            bx += btnW + spacing
+        }
+
+        let barSep = NSView(frame: NSRect(x: 0, y: bar.frame.maxY, width: frame.width, height: 1))
+        barSep.wantsLayer = true
+        barSep.layer?.backgroundColor = t.separatorColor.cgColor
+        barSep.autoresizingMask = [.width]
+
+        addSubview(bar)
+        addSubview(barSep)
+    }
+
+    @objc private func quickPromptTapped(_ sender: NSButton) {
+        guard sender.tag < quickPrompts.count else { return }
+        let prefix = quickPrompts[sender.tag].prefix
+        let existing = inputField.stringValue
+        inputField.stringValue = existing.isEmpty ? prefix : prefix + existing
+        window?.makeFirstResponder(inputField)
+        if let editor = inputField.currentEditor() {
+            editor.selectedRange = NSRange(location: inputField.stringValue.count, length: 0)
+        }
     }
 
     // MARK: - Input

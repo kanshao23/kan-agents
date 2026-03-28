@@ -28,6 +28,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 ?? self?.controller?.characters.first
             character?.showReminder(task: task)
         }
+        PomodoroTimer.shared.onTick = { [weak self] in
+            self?.controller?.characters.forEach { $0.updatePomodoroBar() }
+            PomodoroWindow.shared?.updateUI()
+        }
         PomodoroTimer.shared.onPhaseComplete = { [weak self] phase in
             let character = self?.controller?.characters.first(where: { $0.isManuallyVisible })
                 ?? self?.controller?.characters.first

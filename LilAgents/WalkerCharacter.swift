@@ -70,6 +70,9 @@ class WalkerCharacter {
     var walkStartPixel: CGFloat = 0.0
     var walkEndPixel: CGFloat = 0.0
 
+    // Pomodoro bar
+    private var pomodoroBarLayer: CALayer?
+
     // Onboarding
     var isOnboarding = false
 
@@ -136,6 +139,13 @@ class WalkerCharacter {
         hostView.wantsLayer = true
         hostView.layer?.backgroundColor = NSColor.clear.cgColor
         hostView.layer?.addSublayer(playerLayer)
+
+        let barLayer = CALayer()
+        barLayer.cornerRadius = 2
+        barLayer.backgroundColor = NSColor.clear.cgColor
+        barLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: 0, height: 4)
+        hostView.layer?.addSublayer(barLayer)
+        pomodoroBarLayer = barLayer
 
         window.contentView = hostView
         window.orderFrontRegardless()
@@ -1080,6 +1090,43 @@ class WalkerCharacter {
         }
 
         updateThinkingBubble()
+    }
+
+    // MARK: - Pomodoro Bar
+
+    func updatePomodoroBar() {
+        guard let barLayer = pomodoroBarLayer else { return }
+        let pt = PomodoroTimer.shared
+
+        guard pt.phase != .idle else {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            barLayer.backgroundColor = NSColor.clear.cgColor
+            barLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: 0, height: 4)
+            CATransaction.commit()
+            return
+        }
+
+        let totalSeconds: Int
+        switch pt.phase {
+        case .working:   totalSeconds = pt.workMinutes * 60
+        case .shortBreak: totalSeconds = pt.shortBreakMinutes * 60
+        case .longBreak:  totalSeconds = pt.longBreakMinutes * 60
+        case .idle:       totalSeconds = 1
+        }
+
+        let progress = max(0, CGFloat(pt.secondsRemaining) / CGFloat(max(totalSeconds, 1)))
+        let barW = displayWidth * progress
+        let color: NSColor = pt.phase == .working
+            ? NSColor(red: 0.9, green: 0.35, blue: 0.25, alpha: 0.9)
+            : NSColor(red: 0.25, green: 0.78, blue: 0.52, alpha: 0.9)
+
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.8)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .linear))
+        barLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: barW, height: 4)
+        barLayer.backgroundColor = color.cgColor
+        CATransaction.commit()
     }
 
     // MARK: - Reminders

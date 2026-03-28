@@ -33,11 +33,17 @@ class LilAgentsController {
         char1.characterID = "bruce"
         char2.characterID = "jazz"
 
-        let savedBruce = UserDefaults.standard.double(forKey: "char.bruce.position")
-        char1.positionProgress = savedBruce > 0 ? CGFloat(savedBruce) : 0.3
+        if let saved = UserDefaults.standard.object(forKey: "char.bruce.position") as? Double {
+            char1.positionProgress = CGFloat(saved)
+        } else {
+            char1.positionProgress = 0.3
+        }
 
-        let savedJazz = UserDefaults.standard.double(forKey: "char.jazz.position")
-        char2.positionProgress = savedJazz > 0 ? CGFloat(savedJazz) : 0.7
+        if let saved = UserDefaults.standard.object(forKey: "char.jazz.position") as? Double {
+            char2.positionProgress = CGFloat(saved)
+        } else {
+            char2.positionProgress = 0.7
+        }
 
         char1.pauseEndTime = CACurrentMediaTime() + Double.random(in: 0.5...2.0)
         char2.pauseEndTime = CACurrentMediaTime() + Double.random(in: 8.0...14.0)

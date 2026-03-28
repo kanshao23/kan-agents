@@ -71,6 +71,7 @@ class WalkerCharacter {
     var walkEndPixel: CGFloat = 0.0
 
     // Pomodoro bar
+    private var pomodoroTrackLayer: CALayer?
     private var pomodoroBarLayer: CALayer?
 
     // Onboarding
@@ -140,6 +141,15 @@ class WalkerCharacter {
         hostView.layer?.backgroundColor = NSColor.clear.cgColor
         hostView.layer?.addSublayer(playerLayer)
 
+        // Gray track (full width, hidden until timer starts)
+        let trackLayer = CALayer()
+        trackLayer.cornerRadius = 2
+        trackLayer.backgroundColor = NSColor.clear.cgColor
+        trackLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: displayWidth, height: 4)
+        hostView.layer?.addSublayer(trackLayer)
+        pomodoroTrackLayer = trackLayer
+
+        // Colored fill (grows from left as time elapses)
         let barLayer = CALayer()
         barLayer.cornerRadius = 2
         barLayer.backgroundColor = NSColor.clear.cgColor
@@ -1095,37 +1105,49 @@ class WalkerCharacter {
     // MARK: - Pomodoro Bar
 
     func updatePomodoroBar() {
-        guard let barLayer = pomodoroBarLayer else { return }
+        guard let barLayer = pomodoroBarLayer, let trackLayer = pomodoroTrackLayer else { return }
         let pt = PomodoroTimer.shared
+        let barY = displayHeight - 4
 
         guard pt.phase != .idle else {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
+            trackLayer.backgroundColor = NSColor.clear.cgColor
             barLayer.backgroundColor = NSColor.clear.cgColor
-            barLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: 0, height: 4)
+            barLayer.frame = CGRect(x: 0, y: barY, width: 0, height: 4)
             CATransaction.commit()
             return
         }
 
         let totalSeconds: Int
         switch pt.phase {
-        case .working:   totalSeconds = pt.workMinutes * 60
+        case .working:    totalSeconds = pt.workMinutes * 60
         case .shortBreak: totalSeconds = pt.shortBreakMinutes * 60
         case .longBreak:  totalSeconds = pt.longBreakMinutes * 60
         case .idle:       totalSeconds = 1
         }
 
-        let progress = max(0, CGFloat(pt.secondsRemaining) / CGFloat(max(totalSeconds, 1)))
+        // Elapsed fraction: starts at 0, grows to 1
+        let elapsed = CGFloat(totalSeconds - pt.secondsRemaining)
+        let progress = min(1, max(0, elapsed / CGFloat(max(totalSeconds, 1))))
         let barW = displayWidth * progress
-        let color: NSColor = pt.phase == .working
+
+        let fillColor: NSColor = pt.phase == .working
             ? NSColor(red: 0.9, green: 0.35, blue: 0.25, alpha: 0.9)
             : NSColor(red: 0.25, green: 0.78, blue: 0.52, alpha: 0.9)
 
         CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        trackLayer.frame = CGRect(x: 0, y: barY, width: displayWidth, height: 4)
+        trackLayer.backgroundColor = NSColor(white: 0.5, alpha: 0.35).cgColor
+        trackLayer.cornerRadius = 2
+        CATransaction.commit()
+
+        CATransaction.begin()
         CATransaction.setAnimationDuration(0.8)
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .linear))
-        barLayer.frame = CGRect(x: 0, y: displayHeight - 4, width: barW, height: 4)
-        barLayer.backgroundColor = color.cgColor
+        barLayer.frame = CGRect(x: 0, y: barY, width: barW, height: 4)
+        barLayer.backgroundColor = fillColor.cgColor
         CATransaction.commit()
     }
 

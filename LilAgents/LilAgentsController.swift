@@ -7,6 +7,9 @@ class LilAgentsController {
     var pinnedScreenIndex: Int = -1
     private static let onboardingKey = "hasCompletedOnboarding"
     private var isHiddenForEnvironment = false
+    private var mouseInDockZone = false
+    private var mouseMoveMonitor: Any?
+    private var mouseLocalMonitor: Any?
 
     func start() {
         let char1 = WalkerCharacter(videoName: "walk-bruce-01")
@@ -61,6 +64,7 @@ class LilAgentsController {
 
         setupDebugLine()
         startDisplayLink()
+        startMouseMonitor()
 
         HotkeyManager.shared.register()
         HotkeyManager.shared.onActivate = { [weak self] in
@@ -182,6 +186,34 @@ class LilAgentsController {
         CVDisplayLinkStart(displayLink)
     }
 
+    private func startMouseMonitor() {
+        let handler: (NSEvent) -> Void = { [weak self] _ in
+            guard let self = self else { return }
+            let loc = NSEvent.mouseLocation
+            let inZone = self.isInDockTriggerZone(loc)
+            if inZone != self.mouseInDockZone {
+                self.mouseInDockZone = inZone
+            }
+        }
+        mouseMoveMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { event in
+            handler(event)
+        }
+        mouseLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { event in
+            handler(event)
+            return event
+        }
+    }
+
+    private func isInDockTriggerZone(_ loc: NSPoint) -> Bool {
+        guard let screen = activeScreen else { return false }
+        // Only applies when dock is at bottom and auto-hide is on
+        let fr = screen.frame
+        let vis = screen.visibleFrame
+        guard vis.origin.x == fr.origin.x && vis.origin.y == fr.origin.y else { return false }
+        guard dockAutohideEnabled() else { return false }
+        return loc.y <= fr.origin.y + 5 && loc.x >= fr.origin.x && loc.x <= fr.maxX
+    }
+
     var activeScreen: NSScreen? {
         if pinnedScreenIndex >= 0, pinnedScreenIndex < NSScreen.screens.count {
             return NSScreen.screens[pinnedScreenIndex]
@@ -256,7 +288,14 @@ class LilAgentsController {
         } else {
             // Bottom dock (default, also covers autohide)
             (dockX, dockWidth) = getDockIconArea(screenWidth: fr.width)
-            dockTopY = vis.origin.y
+            if dockAutohideEnabled() && mouseInDockZone {
+                let dockDefaults = UserDefaults(suiteName: "com.apple.dock")
+                let tileSize = CGFloat(dockDefaults?.double(forKey: "tilesize") ?? 48)
+                let estimatedDockHeight = tileSize + 22
+                dockTopY = fr.origin.y + estimatedDockHeight
+            } else {
+                dockTopY = vis.origin.y
+            }
         }
 
         updateDebugLine(dockX: dockX, dockWidth: dockWidth, dockTopY: dockTopY)
@@ -298,5 +337,7 @@ class LilAgentsController {
         if let displayLink = displayLink {
             CVDisplayLinkStop(displayLink)
         }
+        if let m = mouseMoveMonitor { NSEvent.removeMonitor(m) }
+        if let m = mouseLocalMonitor { NSEvent.removeMonitor(m) }
     }
 }

@@ -1084,7 +1084,13 @@ class WalkerCharacter {
 
     // MARK: - Reminders
 
+    var reminderWindow: NSWindow?
+    private var pendingReminderTask: TaskReminder?
+
     func showReminder(task: TaskReminder) {
+        reminderWindow?.close()
+        pendingReminderTask = task
+
         let t = resolvedTheme
         let win = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 300, height: 110),
@@ -1093,7 +1099,7 @@ class WalkerCharacter {
             defer: false
         )
         win.title = "Reminder"
-        win.isReleasedWhenClosed = true
+        win.isReleasedWhenClosed = false
         win.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 20)
 
         let content = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 110))
@@ -1114,11 +1120,11 @@ class WalkerCharacter {
         timeLabel.alignment = .center
         content.addSubview(timeLabel)
 
-        let dismissBtn = NSButton(title: "Got it", target: nil, action: nil)
+        let dismissBtn = NSButton(title: "Got it", target: self, action: #selector(dismissReminder))
         dismissBtn.bezelStyle = .rounded
         dismissBtn.frame = NSRect(x: 16, y: 8, width: 120, height: 24)
 
-        let snoozeBtn = NSButton(title: "Remind in 10 min", target: nil, action: nil)
+        let snoozeBtn = NSButton(title: "Remind in 10 min", target: self, action: #selector(snoozeReminder))
         snoozeBtn.bezelStyle = .rounded
         snoozeBtn.frame = NSRect(x: 144, y: 8, width: 140, height: 24)
 
@@ -1126,43 +1132,29 @@ class WalkerCharacter {
         content.addSubview(snoozeBtn)
         win.contentView = content
 
-        // Position above character
         let charMid = window.frame.midX
         let charTop = window.frame.maxY
-        let winX = charMid - 150
-        let winY = charTop + 10
-        win.setFrameOrigin(NSPoint(x: winX, y: winY))
+        win.setFrameOrigin(NSPoint(x: charMid - 150, y: charTop + 10))
 
-        dismissBtn.target = win
-        dismissBtn.action = #selector(NSWindow.close)
-
-        let capturedTask = task
-        let snoozeAction = SnoozeAction(window: win, task: capturedTask)
-        snoozeBtn.target = snoozeAction
-        snoozeBtn.action = #selector(SnoozeAction.snooze)
-        objc_setAssociatedObject(win, &AssociatedKeys.snoozeAction, snoozeAction, .OBJC_ASSOCIATION_RETAIN)
-
+        reminderWindow = win
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         playCompletionSound()
     }
-}
 
-// MARK: - Reminder Helpers
-
-private enum AssociatedKeys {
-    static var snoozeAction: UInt8 = 0
-}
-
-private class SnoozeAction: NSObject {
-    weak var window: NSWindow?
-    let task: TaskReminder
-    init(window: NSWindow, task: TaskReminder) {
-        self.window = window
-        self.task = task
+    @objc private func dismissReminder() {
+        reminderWindow?.close()
+        reminderWindow = nil
+        pendingReminderTask = nil
     }
-    @objc func snooze() {
-        ReminderScheduler.shared.snooze(task, minutes: 10)
-        window?.close()
+
+    @objc private func snoozeReminder() {
+        if let task = pendingReminderTask {
+            ReminderScheduler.shared.snooze(task, minutes: 10)
+        }
+        reminderWindow?.close()
+        reminderWindow = nil
+        pendingReminderTask = nil
     }
 }
+

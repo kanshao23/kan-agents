@@ -69,7 +69,9 @@ class LilAgentsController {
             if !open.isEmpty {
                 open.forEach { $0.closePopover() }
             } else {
-                self.characters.first(where: { $0.isManuallyVisible })?.openPopover()
+                let target = self.characters.first(where: { $0.isManuallyVisible && $0.characterID == "bruce" })
+                    ?? self.characters.first(where: { $0.isManuallyVisible })
+                target?.openPopover()
             }
         }
 
@@ -276,6 +278,19 @@ class LilAgentsController {
         let sorted = activeChars.sorted { $0.positionProgress < $1.positionProgress }
         for (i, char) in sorted.enumerated() {
             char.window.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + i)
+        }
+
+        // Character interaction: greet when within ~80 screen pixels
+        if activeChars.count == 2,
+           let a = activeChars.first, let b = activeChars.last,
+           !a.isGreeting && !b.isGreeting,
+           !a.isIdleForPopover && !b.isIdleForPopover {
+            let aX = dockX + a.currentTravelDistance * a.positionProgress
+            let bX = dockX + b.currentTravelDistance * b.positionProgress
+            if abs(aX - bX) < 80 {
+                a.triggerGreeting(thenReverse: aX < bX)
+                b.triggerGreeting(thenReverse: aX >= bX)
+            }
         }
     }
 

@@ -42,6 +42,9 @@ class WalkerCharacter {
     var positionProgress: CGFloat = 0.0
     var isWalking = false
     var isPaused = true
+    var isGreeting = false
+    private var greetingEndTime: CFTimeInterval = 0
+    private static let greetingPhrases = ["hey!", "hi!", "👋", "yo!", ":)"]
     var pauseEndTime: CFTimeInterval = 0
     var goingRight = true
     var walkStartPos: CGFloat = 0.0
@@ -215,6 +218,32 @@ class WalkerCharacter {
             closePopover()
         } else {
             openPopover()
+        }
+    }
+
+    func triggerGreeting(thenReverse: Bool) {
+        guard !isGreeting && !isIdleForPopover && !isAgentBusy else { return }
+        isGreeting = true
+        greetingEndTime = CACurrentMediaTime() + 2.5
+
+        let phrase = Self.greetingPhrases.randomElement() ?? "hi!"
+        showBubble(text: phrase, isCompletion: false)
+
+        if thenReverse {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                guard let self = self, self.isGreeting else { return }
+                self.isGreeting = false
+                self.hideBubble()
+                self.goingRight.toggle()
+                self.updateFlip()
+                self.isPaused = false
+                self.pauseEndTime = CACurrentMediaTime()
+            }
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+                self?.isGreeting = false
+                self?.hideBubble()
+            }
         }
     }
 

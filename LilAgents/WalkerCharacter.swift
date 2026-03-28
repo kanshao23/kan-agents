@@ -4,6 +4,16 @@ import AppKit
 class WalkerCharacter {
     let videoName: String
     var characterID: String = ""
+    var providerOverride: AgentProvider?
+    var activeProvider: AgentProvider {
+        get { providerOverride ?? AgentProvider.current }
+        set {
+            providerOverride = newValue
+            if !characterID.isEmpty {
+                UserDefaults.standard.set(newValue.rawValue, forKey: "char.\(characterID).provider")
+            }
+        }
+    }
     var window: NSWindow!
     var playerLayer: AVPlayerLayer!
     var queuePlayer: AVQueuePlayer!
@@ -172,6 +182,28 @@ class WalkerCharacter {
 
     // MARK: - Click Handling & Popover
 
+    @objc func cycleProvider() {
+        let all = AgentProvider.allCases
+        let nextIdx = ((all.firstIndex(of: activeProvider) ?? 0) + 1) % all.count
+        activeProvider = all[nextIdx]  // persists to UserDefaults via setter
+
+        // Update button label
+        if let titleBar = popoverWindow?.contentView?.subviews.first(where: { $0.frame.height == 28 }),
+           let btn = titleBar.viewWithTag(999) as? NSButton {
+            btn.title = activeProvider.displayName
+        }
+
+        // Reset session for new provider
+        session?.terminate()
+        session = nil
+        terminalView?.clearHistory()
+
+        let newSession = activeProvider.createSession()
+        session = newSession
+        wireSession(newSession, providerName: activeProvider.displayName)
+        newSession.start()
+    }
+
     func handleClick() {
         if isOnboarding {
             openOnboardingPopover()
@@ -252,9 +284,9 @@ class WalkerCharacter {
         hideBubble()
 
         if session == nil {
-            let newSession = AgentProvider.current.createSession()
+            let newSession = activeProvider.createSession()
             session = newSession
-            wireSession(newSession)
+            wireSession(newSession, providerName: activeProvider.displayName)
             newSession.start()
         }
 
@@ -379,6 +411,14 @@ class WalkerCharacter {
         titleLabel.textColor = t.titleText
         titleLabel.frame = NSRect(x: 12, y: 6, width: 200, height: 16)
         titleBar.addSubview(titleLabel)
+
+        let providerBtn = NSButton(title: activeProvider.displayName, target: self, action: #selector(cycleProvider))
+        providerBtn.frame = NSRect(x: popoverWidth - 90, y: 5, width: 82, height: 18)
+        providerBtn.bezelStyle = .roundRect
+        providerBtn.font = NSFont.systemFont(ofSize: 10)
+        providerBtn.autoresizingMask = [.minXMargin]
+        providerBtn.tag = 999
+        titleBar.addSubview(providerBtn)
 
         let sep = NSView(frame: NSRect(x: 0, y: popoverHeight - 29, width: popoverWidth, height: 1))
         sep.wantsLayer = true

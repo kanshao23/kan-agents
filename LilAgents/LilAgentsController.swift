@@ -45,6 +45,11 @@ class LilAgentsController {
             char2.positionProgress = 0.7
         }
 
+        if let raw = UserDefaults.standard.string(forKey: "char.bruce.provider"),
+           let p = AgentProvider(rawValue: raw) { char1.providerOverride = p }
+        if let raw = UserDefaults.standard.string(forKey: "char.jazz.provider"),
+           let p = AgentProvider(rawValue: raw) { char2.providerOverride = p }
+
         char1.pauseEndTime = CACurrentMediaTime() + Double.random(in: 0.5...2.0)
         char2.pauseEndTime = CACurrentMediaTime() + Double.random(in: 8.0...14.0)
 

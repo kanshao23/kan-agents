@@ -43,6 +43,9 @@ class WalkerCharacter {
     var isWalking = false
     var isPaused = true
     var isGreeting = false
+    var isBeingDragged = false
+    private var slideVelocity: NSPoint = .zero
+    private var isSliding = false
     private var greetingEndTime: CFTimeInterval = 0
     private static let greetingPhrases = ["hey!", "hi!", "👋", "yo!", ":)"]
     var pauseEndTime: CFTimeInterval = 0
@@ -245,6 +248,36 @@ class WalkerCharacter {
                 self?.hideBubble()
             }
         }
+    }
+
+    func endDrag(velocity: NSPoint) {
+        isBeingDragged = false
+        syncPositionFromWindow()
+
+        let speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
+        if speed > 50 {
+            slideVelocity = velocity
+            isSliding = true
+        } else {
+            isSliding = false
+            // Resume walking after a short pause
+            isPaused = true
+            pauseEndTime = CACurrentMediaTime() + 2.0
+        }
+    }
+
+    private func syncPositionFromWindow() {
+        guard let screen = controller?.activeScreen else { return }
+        let fr = screen.frame
+        let winX = window.frame.midX
+        let dockX = fr.origin.x
+        let dockWidth = fr.width
+        let clamped = max(0, min(1, (winX - dockX) / dockWidth))
+        positionProgress = clamped
+        walkStartPos = positionProgress
+        walkEndPos = positionProgress
+        walkStartPixel = window.frame.origin.x
+        walkEndPixel = window.frame.origin.x
     }
 
     func handleFileDrop(urls: [URL]) {
@@ -878,6 +911,48 @@ class WalkerCharacter {
     // MARK: - Frame Update
 
     func update(dockX: CGFloat, dockWidth: CGFloat, dockTopY: CGFloat) {
+        if isBeingDragged { return }
+
+        if isSliding {
+            let friction: CGFloat = 0.92
+            slideVelocity.x *= friction
+            slideVelocity.y *= friction
+
+            var origin = window.frame.origin
+            origin.x += slideVelocity.x / 60.0
+            origin.y += slideVelocity.y / 60.0
+
+            // Bounce off screen edges
+            if let screen = controller?.activeScreen {
+                let fr = screen.frame
+                if origin.x < fr.origin.x {
+                    origin.x = fr.origin.x
+                    slideVelocity.x = abs(slideVelocity.x) * 0.6
+                } else if origin.x + window.frame.width > fr.maxX {
+                    origin.x = fr.maxX - window.frame.width
+                    slideVelocity.x = -abs(slideVelocity.x) * 0.6
+                }
+                if origin.y < fr.origin.y {
+                    origin.y = fr.origin.y
+                    slideVelocity.y = abs(slideVelocity.y) * 0.6
+                } else if origin.y + window.frame.height > fr.maxY {
+                    origin.y = fr.maxY - window.frame.height
+                    slideVelocity.y = -abs(slideVelocity.y) * 0.6
+                }
+            }
+
+            window.setFrameOrigin(origin)
+
+            let speed = sqrt(slideVelocity.x * slideVelocity.x + slideVelocity.y * slideVelocity.y)
+            if speed < 5 {
+                isSliding = false
+                syncPositionFromWindow()
+                isPaused = true
+                pauseEndTime = CACurrentMediaTime() + 2.0
+            }
+            return
+        }
+
         currentTravelDistance = max(dockWidth - displayWidth, 0)
         if isIdleForPopover {
             let travelDistance = currentTravelDistance

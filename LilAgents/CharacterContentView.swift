@@ -8,6 +8,14 @@ class KeyableWindow: NSWindow {
 class CharacterContentView: NSView {
     weak var character: WalkerCharacter?
 
+    private var dragStart: NSPoint = .zero
+    private var windowOriginAtDragStart: NSPoint = .zero
+    private var isDragging = false
+    private var lastVelocity: NSPoint = .zero
+    private var lastDragTime: TimeInterval = 0
+    private var lastDragPos: NSPoint = .zero
+    private static let dragThreshold: CGFloat = 5
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         registerForDraggedTypes([.fileURL])
@@ -76,6 +84,48 @@ class CharacterContentView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        character?.handleClick()
+        dragStart = convert(event.locationInWindow, from: nil)
+        windowOriginAtDragStart = window?.frame.origin ?? .zero
+        isDragging = false
+        lastVelocity = .zero
+        lastDragTime = event.timestamp
+        lastDragPos = dragStart
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        let pos = convert(event.locationInWindow, from: nil)
+        let dx = pos.x - dragStart.x
+        let dy = pos.y - dragStart.y
+        if !isDragging && sqrt(dx*dx + dy*dy) < Self.dragThreshold { return }
+        if !isDragging {
+            isDragging = true
+            character?.isBeingDragged = true
+        }
+        let newOrigin = NSPoint(
+            x: windowOriginAtDragStart.x + dx,
+            y: windowOriginAtDragStart.y + dy
+        )
+        window?.setFrameOrigin(newOrigin)
+
+        let now = event.timestamp
+        let dt = now - lastDragTime
+        if dt > 0 {
+            let curPos = convert(event.locationInWindow, from: nil)
+            lastVelocity = NSPoint(
+                x: (curPos.x - lastDragPos.x) / CGFloat(dt),
+                y: (curPos.y - lastDragPos.y) / CGFloat(dt)
+            )
+            lastDragTime = now
+            lastDragPos = curPos
+        }
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if isDragging {
+            isDragging = false
+            character?.endDrag(velocity: lastVelocity)
+        } else {
+            character?.handleClick()
+        }
     }
 }

@@ -41,6 +41,11 @@ class CharacterContentView: NSView {
         let localPoint = convert(point, from: superview)
         guard bounds.contains(localPoint) else { return nil }
 
+        // Always accept clicks in the pomodoro bar strip (top 8px when timer is active)
+        if localPoint.y >= bounds.height - 8 && PomodoroTimer.shared.phase != .idle {
+            return self
+        }
+
         // AVPlayerLayer is GPU-rendered so layer.render(in:) won't capture video pixels.
         // Use CGWindowListCreateImage to sample actual on-screen alpha at click point.
         let screenPoint = window?.convertPoint(toScreen: convert(localPoint, to: nil)) ?? .zero
@@ -125,7 +130,12 @@ class CharacterContentView: NSView {
             isDragging = false
             character?.endDrag(velocity: lastVelocity)
         } else {
-            character?.handleClick()
+            // Check if click was in the pomodoro bar strip (top 8px when active)
+            if dragStart.y >= bounds.height - 8 && PomodoroTimer.shared.phase != .idle {
+                PomodoroWindow.toggle()
+            } else {
+                character?.handleClick()
+            }
         }
     }
 }

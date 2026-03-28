@@ -12,7 +12,7 @@ class PomodoroWindow: NSWindow {
             shared = PomodoroWindow()
         }
         shared?.orderFrontRegardless()
-        shared?.startUpdating()
+        shared?.updateUI()
     }
 
     private let phaseLabel = NSTextField(labelWithString: "🍅  Ready")
@@ -122,11 +122,6 @@ class PomodoroWindow: NSWindow {
         card.addSubview(reset)
 
         contentView = card
-    }
-
-    func startUpdating() {
-        PomodoroTimer.shared.onTick = { [weak self] in self?.updateUI() }
-        updateUI()
     }
 
     func updateUI() {

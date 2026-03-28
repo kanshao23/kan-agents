@@ -82,6 +82,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             item.state = theme.name == PopoverTheme.current.name ? .on : .off
             themeMenu.addItem(item)
         }
+        themeMenu.addItem(NSMenuItem.separator())
+        let customizeItem = NSMenuItem(title: "Customize Colors…", action: #selector(customizeTheme), keyEquivalent: "")
+        themeMenu.addItem(customizeItem)
         themeItem.submenu = themeMenu
         menu.addItem(themeItem)
 
@@ -148,6 +151,59 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 if let terminal = char.terminalView {
                     char.popoverWindow?.makeFirstResponder(terminal.inputField)
                 }
+            }
+        }
+    }
+
+    @objc func customizeTheme() {
+        let alert = NSAlert()
+        alert.messageText = "Custom Theme Colors"
+        alert.informativeText = "Choose background and accent colors for the Custom theme."
+        alert.addButton(withTitle: "Apply")
+        alert.addButton(withTitle: "Cancel")
+
+        let panel = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 60))
+
+        let bgLabel = NSTextField(labelWithString: "Background:")
+        bgLabel.frame = NSRect(x: 0, y: 34, width: 90, height: 20)
+        let bgWell = NSColorWell(frame: NSRect(x: 95, y: 32, width: 44, height: 24))
+        bgWell.color = PopoverTheme.customBackground
+
+        let acLabel = NSTextField(labelWithString: "Accent:")
+        acLabel.frame = NSRect(x: 150, y: 34, width: 60, height: 20)
+        let acWell = NSColorWell(frame: NSRect(x: 215, y: 32, width: 44, height: 24))
+        acWell.color = PopoverTheme.customAccent
+
+        panel.addSubview(bgLabel); panel.addSubview(bgWell)
+        panel.addSubview(acLabel); panel.addSubview(acWell)
+        alert.accessoryView = panel
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            PopoverTheme.customBackground = bgWell.color
+            PopoverTheme.customAccent = acWell.color
+            if PopoverTheme.current.name == "Custom" {
+                rebuildPopoversForCurrentTheme()
+            }
+        }
+    }
+
+    private func rebuildPopoversForCurrentTheme() {
+        let currentName = PopoverTheme.current.name
+        guard let idx = PopoverTheme.allThemes.firstIndex(where: { $0.name == currentName }) else { return }
+        PopoverTheme.current = PopoverTheme.allThemes[idx]
+        controller?.characters.forEach { char in
+            let wasOpen = char.isIdleForPopover
+            if wasOpen { char.popoverWindow?.orderOut(nil) }
+            char.popoverWindow = nil; char.terminalView = nil; char.thinkingBubbleWindow = nil
+            if wasOpen {
+                char.createPopoverWindow()
+                if let session = char.session, !session.history.isEmpty {
+                    char.terminalView?.replayHistory(session.history)
+                }
+                char.updatePopoverPosition()
+                char.popoverWindow?.orderFrontRegardless()
+                char.popoverWindow?.makeKey()
+                if let t = char.terminalView { char.popoverWindow?.makeFirstResponder(t.inputField) }
             }
         }
     }

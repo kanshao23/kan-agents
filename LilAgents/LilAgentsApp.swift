@@ -20,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         controller = LilAgentsController()
         controller?.start()
+        NotificationManager.shared.requestPermission()
         setupMenuBar()
     }
 

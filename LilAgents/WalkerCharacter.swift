@@ -4,6 +4,7 @@ import AppKit
 class WalkerCharacter {
     let videoName: String
     var characterID: String = ""
+    var characterName: String { characterID == "bruce" ? "Bruce" : "Jazz" }
     var providerOverride: AgentProvider?
     var activeProvider: AgentProvider {
         get { providerOverride ?? AgentProvider.current }
@@ -456,6 +457,9 @@ class WalkerCharacter {
             self.terminalView?.endStreaming()
             self.playCompletionSound()
             self.showCompletionBubble()
+            if !(self.popoverWindow?.isKeyWindow ?? false) {
+                NotificationManager.shared.sendCompletion(characterName: self.characterName)
+            }
             if !self.characterID.isEmpty {
                 HistoryStore.save(session.history, characterID: self.characterID, provider: capturedProvider)
             }

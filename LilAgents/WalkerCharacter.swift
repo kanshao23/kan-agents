@@ -1281,5 +1281,130 @@ class WalkerCharacter {
         reminderWindow = nil
         pendingReminderTask = nil
     }
+
+    // MARK: - Habit Check
+
+    var habitCheckWindow: NSWindow?
+    private var pendingHabitID: UUID?
+
+    func showHabitCheck(habit: Habit) {
+        habitCheckWindow?.close()
+        pendingHabitID = habit.id
+
+        let accent = characterColor
+        let W: CGFloat = 280
+        let H: CGFloat = 154
+
+        let win = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: W, height: H),
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        win.isOpaque = false
+        win.backgroundColor = .clear
+        win.hasShadow = true
+        win.isReleasedWhenClosed = false
+        win.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 20)
+        win.collectionBehavior = [.moveToActiveSpace, .stationary]
+
+        let card = NSView(frame: NSRect(x: 0, y: 0, width: W, height: H))
+        card.wantsLayer = true
+        card.layer?.backgroundColor = resolvedTheme.popoverBg.cgColor
+        card.layer?.cornerRadius = 22
+        card.layer?.masksToBounds = true
+        card.layer?.borderWidth = 2.5
+        card.layer?.borderColor = accent.withAlphaComponent(0.5).cgColor
+
+        // Coloured header strip
+        let header = NSView(frame: NSRect(x: 0, y: H - 44, width: W, height: 44))
+        header.wantsLayer = true
+        header.layer?.backgroundColor = accent.withAlphaComponent(0.15).cgColor
+        card.addSubview(header)
+
+        // Emoji in header
+        let emojiLabel = NSTextField(labelWithString: habit.emoji)
+        emojiLabel.font = NSFont.systemFont(ofSize: 24)
+        emojiLabel.frame = NSRect(x: 12, y: H - 38, width: 36, height: 32)
+        card.addSubview(emojiLabel)
+
+        // Question text
+        let question = NSTextField(wrappingLabelWithString: "今天\(habit.name)了吗？")
+        question.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        question.textColor = resolvedTheme.textPrimary
+        question.alignment = .center
+        question.frame = NSRect(x: 12, y: 50, width: W - 24, height: 48)
+        card.addSubview(question)
+
+        func makePill(_ title: String, filled: Bool) -> NSButton {
+            let btn = NSButton(title: title, target: nil, action: nil)
+            btn.isBordered = false
+            btn.wantsLayer = true
+            btn.layer?.cornerRadius = 13
+            if filled {
+                btn.layer?.backgroundColor = accent.cgColor
+                btn.attributedTitle = NSAttributedString(string: title, attributes: [
+                    .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
+                    .foregroundColor: NSColor.white
+                ])
+            } else {
+                btn.layer?.backgroundColor = accent.withAlphaComponent(0.1).cgColor
+                btn.layer?.borderWidth = 1.2
+                btn.layer?.borderColor = accent.withAlphaComponent(0.35).cgColor
+                btn.attributedTitle = NSAttributedString(string: title, attributes: [
+                    .font: NSFont.systemFont(ofSize: 12, weight: .medium),
+                    .foregroundColor: accent
+                ])
+            }
+            return btn
+        }
+
+        let doneBtn = makePill("✅  做到了！", filled: true)
+        doneBtn.frame = NSRect(x: 12, y: 12, width: 120, height: 28)
+        doneBtn.target = self
+        doneBtn.action = #selector(habitDone)
+        card.addSubview(doneBtn)
+
+        let skipBtn = makePill("❌  明天再说", filled: false)
+        skipBtn.frame = NSRect(x: 140, y: 12, width: 128, height: 28)
+        skipBtn.target = self
+        skipBtn.action = #selector(habitSkip)
+        card.addSubview(skipBtn)
+
+        win.contentView = card
+        let charMid = window.frame.midX
+        let charTop = window.frame.maxY
+        win.setFrameOrigin(NSPoint(x: charMid - W / 2, y: charTop + 8))
+
+        habitCheckWindow = win
+        win.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        playCompletionSound()
+    }
+
+    @objc private func habitDone() {
+        guard let id = pendingHabitID else { return }
+        let habits = HabitStore.shared.habits
+        if let idx = habits.firstIndex(where: { $0.id == id }) {
+            let justCompleted = HabitStore.shared.toggleToday(at: idx)
+            if justCompleted {
+                showBubble(text: "习惯打卡！🎉", isCompletion: true)
+                playCompletionSound()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                    self?.thinkingBubbleWindow?.orderOut(nil)
+                }
+            }
+        }
+        habitCheckWindow?.close()
+        habitCheckWindow = nil
+        pendingHabitID = nil
+        HabitWindow.shared?.reload()
+    }
+
+    @objc private func habitSkip() {
+        habitCheckWindow?.close()
+        habitCheckWindow = nil
+        pendingHabitID = nil
+    }
 }
 

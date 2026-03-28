@@ -5,6 +5,8 @@ struct Habit: Codable, Identifiable {
     var name: String
     var emoji: String
     var completions: [String] = []   // "YYYY-MM-DD" strings
+    var reminderHour: Int? = nil
+    var reminderMinute: Int? = nil
 
     var todayKey: String {
         let f = DateFormatter()

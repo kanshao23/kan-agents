@@ -34,6 +34,7 @@
 		A10000010000000000000043 /* PomodoroWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000042 /* PomodoroWindow.swift */; };
 		A10000010000000000000044 /* HabitTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000043 /* HabitTracker.swift */; };
 		A10000010000000000000045 /* HabitWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000044 /* HabitWindow.swift */; };
+		A10000010000000000000046 /* HabitScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000045 /* HabitScheduler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -65,6 +66,7 @@
 		A10000020000000000000042 /* PomodoroWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroWindow.swift; sourceTree = "<group>"; };
 		A10000020000000000000043 /* HabitTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitTracker.swift; sourceTree = "<group>"; };
 		A10000020000000000000044 /* HabitWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitWindow.swift; sourceTree = "<group>"; };
+		A10000020000000000000045 /* HabitScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitScheduler.swift; sourceTree = "<group>"; };
 		A10000030000000000000001 /* lil agents.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "lil agents.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -110,6 +112,7 @@
 				A10000020000000000000042 /* PomodoroWindow.swift */,
 				A10000020000000000000043 /* HabitTracker.swift */,
 				A10000020000000000000044 /* HabitWindow.swift */,
+				A10000020000000000000045 /* HabitScheduler.swift */,
 				A10000020000000000000023 /* TerminalView.swift */,
 				A10000020000000000000024 /* WalkerCharacter.swift */,
 				A10000020000000000000025 /* LilAgentsController.swift */,
@@ -228,6 +231,7 @@
 				A10000010000000000000043 /* PomodoroWindow.swift in Sources */,
 				A10000010000000000000044 /* HabitTracker.swift in Sources */,
 				A10000010000000000000045 /* HabitWindow.swift in Sources */,
+				A10000010000000000000046 /* HabitScheduler.swift in Sources */,
 				A10000010000000000000023 /* TerminalView.swift in Sources */,
 				A10000010000000000000024 /* WalkerCharacter.swift in Sources */,
 				A10000010000000000000025 /* LilAgentsController.swift in Sources */,

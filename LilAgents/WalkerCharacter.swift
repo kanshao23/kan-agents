@@ -75,6 +75,9 @@ class WalkerCharacter {
     private var pomodoroBarLayer: CALayer?
     private var pomodoroTimeLayer: CATextLayer?
     private static let pomodoroBarH: CGFloat = 14
+    /// The character currently "owning" the pomodoro timer (shows bar + time).
+    /// nil means any character can show it (fallback).
+    static weak var pomodoroCharacter: WalkerCharacter?
 
     // Onboarding
     var isOnboarding = false
@@ -1144,7 +1147,10 @@ class WalkerCharacter {
         let bH = Self.pomodoroBarH
         let barY = displayHeight - bH
 
-        guard pt.phase != .idle else {
+        // Only the designated character shows the bar; others stay hidden.
+        let isOwner = Self.pomodoroCharacter == nil || Self.pomodoroCharacter === self
+
+        guard pt.phase != .idle && isOwner else {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             trackLayer.backgroundColor = NSColor.clear.cgColor
@@ -1449,6 +1455,10 @@ class WalkerCharacter {
 
     @objc func menuTogglePomodoro() {
         let pt = PomodoroTimer.shared
+        if pt.phase == .idle {
+            // Starting fresh — claim this character as owner
+            WalkerCharacter.pomodoroCharacter = self
+        }
         pt.isRunning ? pt.pause() : pt.start()
         PomodoroWindow.shared?.updateUI()
     }
@@ -1460,6 +1470,7 @@ class WalkerCharacter {
 
     @objc func menuResetPomodoro() {
         PomodoroTimer.shared.reset()
+        WalkerCharacter.pomodoroCharacter = nil
         PomodoroWindow.shared?.updateUI()
     }
 

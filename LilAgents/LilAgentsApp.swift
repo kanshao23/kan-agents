@@ -43,14 +43,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 ?? self?.controller?.characters.first
             switch phase {
             case .working:
-                character?.showBubble(text: "休息一下！☕", isCompletion: true, action: {
+                character?.showBubble(text: "休息一下！☕", isCompletion: true, action: { [weak character] in
+                    WalkerCharacter.pomodoroCharacter = character
                     PomodoroTimer.shared.start()
                     PomodoroWindow.shared?.updateUI()
                 })
                 character?.playCompletionSound()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 10) { character?.thinkingBubbleWindow?.orderOut(nil) }
             case .shortBreak, .longBreak:
-                character?.showBubble(text: "回来工作啦！💻 点我开始", isCompletion: false, action: {
+                character?.showBubble(text: "回来工作啦！💻 点我开始", isCompletion: false, action: { [weak character] in
+                    WalkerCharacter.pomodoroCharacter = character
                     PomodoroTimer.shared.start()
                     PomodoroWindow.shared?.updateUI()
                 })
@@ -376,6 +378,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func togglePomodoro() {
+        // When started from menu bar, assign the visible character as owner
+        if PomodoroTimer.shared.phase == .idle {
+            let character = controller?.characters.first(where: { $0.isManuallyVisible })
+                ?? controller?.characters.first
+            WalkerCharacter.pomodoroCharacter = character
+        }
         PomodoroWindow.toggle()
     }
 

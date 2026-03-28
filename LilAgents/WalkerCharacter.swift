@@ -445,17 +445,19 @@ class WalkerCharacter {
     }
 
     private func wireSession(_ session: any AgentSession, providerName: String = AgentProvider.current.displayName) {
+        let capturedProvider = activeProvider
         session.onText = { [weak self] text in
             self?.currentStreamingText += text
             self?.terminalView?.appendStreamingText(text)
         }
 
         session.onTurnComplete = { [weak self] in
-            self?.terminalView?.endStreaming()
-            self?.playCompletionSound()
-            self?.showCompletionBubble()
-            if let self = self, !self.characterID.isEmpty {
-                HistoryStore.save(session.history, characterID: self.characterID, provider: self.activeProvider)
+            guard let self = self else { return }
+            self.terminalView?.endStreaming()
+            self.playCompletionSound()
+            self.showCompletionBubble()
+            if !self.characterID.isEmpty {
+                HistoryStore.save(session.history, characterID: self.characterID, provider: capturedProvider)
             }
         }
 

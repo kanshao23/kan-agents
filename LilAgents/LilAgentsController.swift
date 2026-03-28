@@ -62,6 +62,17 @@ class LilAgentsController {
         setupDebugLine()
         startDisplayLink()
 
+        HotkeyManager.shared.register()
+        HotkeyManager.shared.onActivate = { [weak self] in
+            guard let self = self else { return }
+            let open = self.characters.filter { $0.isIdleForPopover }
+            if !open.isEmpty {
+                open.forEach { $0.closePopover() }
+            } else {
+                self.characters.first(where: { $0.isManuallyVisible })?.openPopover()
+            }
+        }
+
         if !UserDefaults.standard.bool(forKey: Self.onboardingKey) {
             triggerOnboarding()
         }

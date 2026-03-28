@@ -57,6 +57,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         soundItem.state = .on
         menu.addItem(soundItem)
 
+        let hotkeyItem = NSMenuItem(title: "Open Chat: ⌘⇧Space", action: nil, keyEquivalent: "")
+        hotkeyItem.isEnabled = false
+        menu.addItem(hotkeyItem)
+
         // Provider submenu
         let providerItem = NSMenuItem(title: "Provider", action: nil, keyEquivalent: "")
         let providerMenu = NSMenu()

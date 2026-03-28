@@ -26,6 +26,7 @@
 		A10000010000000000000035 /* GeminiSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000034 /* GeminiSession.swift */; };
 		A10000010000000000000036 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000035 /* HistoryStore.swift */; };
 		A10000010000000000000037 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000036 /* NotificationManager.swift */; };
+		A10000010000000000000038 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000037 /* HotkeyManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 		A10000020000000000000034 /* GeminiSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiSession.swift; sourceTree = "<group>"; };
 		A10000020000000000000035 /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		A10000020000000000000036 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		A10000020000000000000037 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		A10000030000000000000001 /* lil agents.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "lil agents.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -86,6 +88,7 @@
 				A10000020000000000000034 /* GeminiSession.swift */,
 				A10000020000000000000035 /* HistoryStore.swift */,
 				A10000020000000000000036 /* NotificationManager.swift */,
+				A10000020000000000000037 /* HotkeyManager.swift */,
 				A10000020000000000000023 /* TerminalView.swift */,
 				A10000020000000000000024 /* WalkerCharacter.swift */,
 				A10000020000000000000025 /* LilAgentsController.swift */,
@@ -196,6 +199,7 @@
 				A10000010000000000000035 /* GeminiSession.swift in Sources */,
 				A10000010000000000000036 /* HistoryStore.swift in Sources */,
 				A10000010000000000000037 /* NotificationManager.swift in Sources */,
+				A10000010000000000000038 /* HotkeyManager.swift in Sources */,
 				A10000010000000000000023 /* TerminalView.swift in Sources */,
 				A10000010000000000000024 /* WalkerCharacter.swift in Sources */,
 				A10000010000000000000025 /* LilAgentsController.swift in Sources */,

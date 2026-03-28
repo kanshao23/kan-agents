@@ -241,13 +241,6 @@ class WalkerCharacter {
     }
 
     func openPopover() {
-        // Close any other open popover
-        if let siblings = controller?.characters {
-            for sibling in siblings where sibling !== self && sibling.isIdleForPopover {
-                sibling.closePopover()
-            }
-        }
-
         isIdleForPopover = true
         isWalking = false
         isPaused = true
@@ -286,11 +279,16 @@ class WalkerCharacter {
 
         clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
             guard let self = self, let popover = self.popoverWindow else { return }
-            let popoverFrame = popover.frame
-            let charFrame = self.window.frame
-            if !popoverFrame.contains(NSEvent.mouseLocation) && !charFrame.contains(NSEvent.mouseLocation) {
-                self.closePopover()
+            let loc = NSEvent.mouseLocation
+            if popover.frame.contains(loc) || self.window.frame.contains(loc) { return }
+            // Don't close if clicking on a sibling's popover or character window
+            if let siblings = self.controller?.characters {
+                for sibling in siblings where sibling !== self {
+                    if sibling.popoverWindow?.frame.contains(loc) == true { return }
+                    if sibling.window.frame.contains(loc) { return }
+                }
             }
+            self.closePopover()
         }
 
         escapeKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in

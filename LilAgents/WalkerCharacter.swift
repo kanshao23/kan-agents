@@ -1081,4 +1081,88 @@ class WalkerCharacter {
 
         updateThinkingBubble()
     }
+
+    // MARK: - Reminders
+
+    func showReminder(task: TaskReminder) {
+        let t = resolvedTheme
+        let win = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 300, height: 110),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        win.title = "Reminder"
+        win.isReleasedWhenClosed = true
+        win.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 20)
+
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 110))
+        content.wantsLayer = true
+        content.layer?.backgroundColor = t.popoverBg.cgColor
+
+        let label = NSTextField(wrappingLabelWithString: task.title)
+        label.frame = NSRect(x: 16, y: 56, width: 268, height: 40)
+        label.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        label.textColor = t.textPrimary
+        label.alignment = .center
+        content.addSubview(label)
+
+        let timeLabel = NSTextField(labelWithString: "🔔 " + task.timeString)
+        timeLabel.frame = NSRect(x: 16, y: 36, width: 268, height: 18)
+        timeLabel.font = NSFont.systemFont(ofSize: 11)
+        timeLabel.textColor = t.textDim
+        timeLabel.alignment = .center
+        content.addSubview(timeLabel)
+
+        let dismissBtn = NSButton(title: "Got it", target: nil, action: nil)
+        dismissBtn.bezelStyle = .rounded
+        dismissBtn.frame = NSRect(x: 16, y: 8, width: 120, height: 24)
+
+        let snoozeBtn = NSButton(title: "Remind in 10 min", target: nil, action: nil)
+        snoozeBtn.bezelStyle = .rounded
+        snoozeBtn.frame = NSRect(x: 144, y: 8, width: 140, height: 24)
+
+        content.addSubview(dismissBtn)
+        content.addSubview(snoozeBtn)
+        win.contentView = content
+
+        // Position above character
+        let charMid = window.frame.midX
+        let charTop = window.frame.maxY
+        let winX = charMid - 150
+        let winY = charTop + 10
+        win.setFrameOrigin(NSPoint(x: winX, y: winY))
+
+        dismissBtn.target = win
+        dismissBtn.action = #selector(NSWindow.close)
+
+        let capturedTask = task
+        let snoozeAction = SnoozeAction(window: win, task: capturedTask)
+        snoozeBtn.target = snoozeAction
+        snoozeBtn.action = #selector(SnoozeAction.snooze)
+        objc_setAssociatedObject(win, &AssociatedKeys.snoozeAction, snoozeAction, .OBJC_ASSOCIATION_RETAIN)
+
+        win.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        playCompletionSound()
+    }
+}
+
+// MARK: - Reminder Helpers
+
+private enum AssociatedKeys {
+    static var snoozeAction: UInt8 = 0
+}
+
+private class SnoozeAction: NSObject {
+    weak var window: NSWindow?
+    let task: TaskReminder
+    init(window: NSWindow, task: TaskReminder) {
+        self.window = window
+        self.task = task
+    }
+    @objc func snooze() {
+        ReminderScheduler.shared.snooze(task, minutes: 10)
+        window?.close()
+    }
 }

@@ -22,6 +22,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         controller?.start()
         NotificationManager.shared.requestPermission()
         setupMenuBar()
+        ReminderScheduler.shared.start()
+        ReminderScheduler.shared.onTaskDue = { [weak self] task in
+            let character = self?.controller?.characters.first(where: { $0.isManuallyVisible })
+                ?? self?.controller?.characters.first
+            character?.showReminder(task: task)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -127,6 +133,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         shrinkItem.submenu = shrinkMenu
         menu.addItem(shrinkItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let remindersItem = NSMenuItem(title: "Daily Reminders…", action: #selector(openReminders), keyEquivalent: "")
+        menu.addItem(remindersItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -320,6 +331,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             for item in menu.items { item.state = .off }
         }
         sender.state = .on
+    }
+
+    @objc func openReminders() {
+        TaskManagerWindow.show()
     }
 
     @objc func quitApp() {
